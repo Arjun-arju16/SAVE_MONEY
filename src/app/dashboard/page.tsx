@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Wallet, Lock, AlertCircle, ArrowLeft, Plus, LogOut, Clock, TrendingUp, Shield, Target, Gift, History } from "lucide-react"
+import { Wallet, Lock, AlertCircle, ArrowLeft, Plus, LogOut, Clock, TrendingUp, Shield, Target, Gift, History, User } from "lucide-react"
 import Link from "next/link"
 import { useSession, authClient } from "@/lib/auth-client"
 import { useRouter } from "next/navigation"
@@ -35,6 +35,7 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(false)
   const [isFetchingData, setIsFetchingData] = useState(true)
   const [showCelebration, setShowCelebration] = useState(false)
+  const [walletBalance, setWalletBalance] = useState(0)
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -43,13 +44,15 @@ export default function Dashboard() {
     }
   }, [session, isPending, router])
 
-  // Fetch active savings
+  // Fetch active savings and wallet balance
   const fetchActiveSavings = async () => {
     const token = localStorage.getItem("bearer_token")
     if (!token) return
 
     try {
       setIsFetchingData(true)
+      
+      // Fetch savings
       const response = await fetch("/api/savings/active", {
         headers: {
           "Authorization": `Bearer ${token}`
@@ -59,6 +62,15 @@ export default function Dashboard() {
       if (response.ok) {
         const data = await response.json()
         setActiveSavings(data)
+      }
+
+      // Fetch wallet balance
+      const walletRes = await fetch("/api/wallet/balance", {
+        headers: { "Authorization": `Bearer ${token}` }
+      })
+      if (walletRes.ok) {
+        const walletData = await walletRes.json()
+        setWalletBalance(walletData.balance)
       }
     } catch (error) {
       console.error("Failed to fetch savings:", error)
@@ -266,9 +278,12 @@ export default function Dashboard() {
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <span className="hidden sm:inline text-sm text-gray-600 dark:text-gray-400">
-              {session.user.name}
-            </span>
+            <Link href="/profile">
+              <Button variant="ghost" size="sm">
+                <User className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Profile</span>
+              </Button>
+            </Link>
             <Button variant="ghost" size="sm" onClick={handleSignOut}>
               <LogOut className="w-4 h-4 mr-2" />
               Logout
@@ -278,47 +293,83 @@ export default function Dashboard() {
       </nav>
 
       <div className="max-w-5xl mx-auto px-6 py-12">
-        {/* Total Locked Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <Card className="p-8 bg-gradient-to-br from-violet-600 via-purple-600 to-pink-600 border-0 text-white relative overflow-hidden">
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzBoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyeiIvPjwvZz48L2c+PC9zdmc+')] opacity-20"></div>
-            <div className="relative z-10">
-              <div className="flex items-center gap-2 mb-4 text-white/80">
-                <Shield className="w-5 h-5" />
-                <span className="text-sm font-medium">Total Locked Savings</span>
+        {/* Wallet and Locked Savings Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {/* Wallet Balance Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <Card className="p-8 bg-gradient-to-br from-green-500 via-emerald-500 to-teal-500 border-0 text-white relative overflow-hidden">
+              <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzBoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyeiIvPjwvZz48L2c+PC9zdmc+')] opacity-20"></div>
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-4 text-white/80">
+                  <Wallet className="w-5 h-5" />
+                  <span className="text-sm font-medium">Wallet Balance</span>
+                </div>
+                <motion.div
+                  key={walletBalance}
+                  initial={{ scale: 1.1, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  className="text-4xl md:text-5xl font-bold mb-2"
+                >
+                  ₹{walletBalance.toLocaleString()}
+                </motion.div>
+                <p className="text-white/80 text-sm mb-4">
+                  Available for goals
+                </p>
+                <Link href="/my-goals">
+                  <Button className="bg-white text-emerald-600 hover:bg-gray-100">
+                    <Target className="w-4 h-4 mr-2" />
+                    View My Goals
+                  </Button>
+                </Link>
               </div>
-              <motion.div
-                key={totalLocked}
-                initial={{ scale: 1.1, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="text-5xl md:text-6xl font-bold mb-2"
-              >
-                ₹{totalLocked.toLocaleString()}
-              </motion.div>
-              <p className="text-white/80 text-sm mb-6">
-                {activeSavings.length} active {activeSavings.length === 1 ? 'lock' : 'locks'}
-              </p>
+            </Card>
+          </motion.div>
 
-              <Button 
-                onClick={() => setShowAddMoney(true)}
-                className="bg-white text-violet-600 hover:bg-gray-100"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Lock New Savings
-              </Button>
-            </div>
-          </Card>
-        </motion.div>
+          {/* Total Locked Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            <Card className="p-8 bg-gradient-to-br from-violet-600 via-purple-600 to-pink-600 border-0 text-white relative overflow-hidden">
+              <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzBoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyeiIvPjwvZz48L2c+PC9zdmc+')] opacity-20"></div>
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-4 text-white/80">
+                  <Shield className="w-5 h-5" />
+                  <span className="text-sm font-medium">Total Locked Savings</span>
+                </div>
+                <motion.div
+                  key={totalLocked}
+                  initial={{ scale: 1.1, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  className="text-4xl md:text-5xl font-bold mb-2"
+                >
+                  ₹{totalLocked.toLocaleString()}
+                </motion.div>
+                <p className="text-white/80 text-sm mb-4">
+                  {activeSavings.length} active {activeSavings.length === 1 ? 'lock' : 'locks'}
+                </p>
+
+                <Button 
+                  onClick={() => setShowAddMoney(true)}
+                  className="bg-white text-violet-600 hover:bg-gray-100"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Lock New Savings
+                </Button>
+              </div>
+            </Card>
+          </motion.div>
+        </div>
 
         {/* Quick Action Cards - Goals, Rewards, History */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
+          transition={{ delay: 0.2 }}
           className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
         >
           <Link href="/goals">
@@ -357,7 +408,7 @@ export default function Dashboard() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
+            transition={{ delay: 0.3 }}
           >
             <Card className="p-6 bg-white dark:bg-gray-800">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center mb-4">
@@ -371,7 +422,7 @@ export default function Dashboard() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
+            transition={{ delay: 0.4 }}
           >
             <Card className="p-6 bg-white dark:bg-gray-800">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center mb-4">
@@ -385,7 +436,7 @@ export default function Dashboard() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
+            transition={{ delay: 0.5 }}
           >
             <Card className="p-6 bg-white dark:bg-gray-800">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center mb-4">
@@ -401,7 +452,7 @@ export default function Dashboard() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
+          transition={{ delay: 0.6 }}
         >
           <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
             <Lock className="w-6 h-6 text-violet-600" />
@@ -437,7 +488,7 @@ export default function Dashboard() {
                   key={saving.id}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.6 + i * 0.1 }}
+                  transition={{ delay: 0.7 + i * 0.1 }}
                 >
                   <Card className="p-6 bg-white dark:bg-gray-800 hover:shadow-xl transition-all">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">

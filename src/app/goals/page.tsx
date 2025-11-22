@@ -1,16 +1,21 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Search, Filter, ShoppingBag, Sparkles, TrendingUp, Clock, Lock } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { 
+  ArrowLeft, Search, Filter, ShoppingBag, Sparkles, TrendingUp, 
+  Clock, Lock, Target, AlertCircle, X, CheckCircle2
+} from "lucide-react"
 import Link from "next/link"
 import { useSession } from "@/lib/auth-client"
 import { useRouter } from "next/navigation"
-import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { toast } from "sonner"
 
 interface Product {
   id: number
@@ -40,8 +45,12 @@ export default function Goals() {
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
-  const [totalSavings, setTotalSavings] = useState(0)
+  const [walletBalance, setWalletBalance] = useState(0)
   const [activeLocks, setActiveLocks] = useState<LockedSaving[]>([])
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [targetAmount, setTargetAmount] = useState("")
+  const [isCreatingGoal, setIsCreatingGoal] = useState(false)
+  const [showCelebration, setShowCelebration] = useState(false)
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -70,29 +79,37 @@ export default function Goals() {
     fetchProducts()
   }, [])
 
-  // Fetch user savings
+  // Fetch user data
   useEffect(() => {
-    const fetchSavings = async () => {
+    const fetchUserData = async () => {
       const token = localStorage.getItem("bearer_token")
       if (!token) return
 
       try {
-        const response = await fetch("/api/savings/active", {
+        // Fetch wallet
+        const walletRes = await fetch("/api/wallet/balance", {
           headers: { "Authorization": `Bearer ${token}` }
         })
-        if (response.ok) {
-          const data = await response.json()
-          setActiveLocks(data)
-          const total = data.reduce((sum: number, saving: LockedSaving) => sum + saving.amount, 0)
-          setTotalSavings(total)
+        if (walletRes.ok) {
+          const walletData = await walletRes.json()
+          setWalletBalance(walletData.balance)
+        }
+
+        // Fetch locks
+        const locksRes = await fetch("/api/savings/active", {
+          headers: { "Authorization": `Bearer ${token}` }
+        })
+        if (locksRes.ok) {
+          const locksData = await locksRes.json()
+          setActiveLocks(locksData)
         }
       } catch (error) {
-        console.error("Failed to fetch savings:", error)
+        console.error("Failed to fetch user data:", error)
       }
     }
 
     if (session?.user) {
-      fetchSavings()
+      fetchUserData()
     }
   }, [session])
 
@@ -114,15 +131,63 @@ export default function Goals() {
     setFilteredProducts(filtered)
   }, [searchQuery, categoryFilter, products])
 
-  const categories = ["all", ...Array.from(new Set(products.map(p => p.category)))]
+  const handleCreateGoal = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!selectedProduct || !targetAmount) return
 
-  const calculateProgress = (price: number) => {
-    return Math.min((totalSavings / price) * 100, 100)
+    const amount = parseInt(targetAmount)
+    
+    if (amount < selectedProduct.price / 2) {
+      toast.error(`Target amount should be at least ₹${(selectedProduct.price / 2).toLocaleString()}`)
+      return
+    }
+
+    const token = localStorage.getItem("bearer_token")
+    if (!token) {
+      toast.error("Please login again")
+      return
+    }
+
+    setIsCreatingGoal(true)
+
+    try {
+      const response = await fetch("/api/goals/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          productId: selectedProduct.id,
+          targetAmount: amount
+        })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast.success("Goal created successfully!")
+        setShowCelebration(true)
+        setTimeout(() => {
+          setShowCelebration(false)
+          router.push("/my-goals")
+        }, 2000)
+      } else {
+        toast.error(data.error || "Failed to create goal")
+      }
+    } catch (error) {
+      toast.error("Something went wrong")
+    } finally {
+      setIsCreatingGoal(false)
+    }
   }
 
-  const calculateDaysToGoal = (price: number, dailySavings: number = 50) => {
-    const remaining = Math.max(0, price - totalSavings)
-    return Math.ceil(remaining / dailySavings)
+  const categories = ["all", ...Array.from(new Set(products.map(p => p.category)))]
+
+  const calculateDaysToGoal = (price: number, dailyRate: number = 50) => {
+    const remaining = Math.max(0, price - walletBalance)
+    return Math.ceil(remaining / dailyRate)
   }
 
   if (isPending || !session?.user) {
@@ -138,6 +203,39 @@ export default function Goals() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-purple-950 dark:to-gray-900">
+      {/* Goal Created Celebration */}
+      <AnimatePresence>
+        {showCelebration && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center"
+          >
+            <motion.div
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
+              exit={{ scale: 0, rotate: 180 }}
+              transition={{ type: "spring", duration: 0.6 }}
+              className="bg-gradient-to-br from-violet-600 via-purple-600 to-pink-600 text-white p-12 rounded-3xl shadow-2xl"
+            >
+              <motion.div
+                animate={{ 
+                  scale: [1, 1.2, 1],
+                  rotate: [0, 10, -10, 0]
+                }}
+                transition={{ duration: 0.5, repeat: Infinity }}
+                className="text-8xl mb-4"
+              >
+                🎯
+              </motion.div>
+              <h2 className="text-4xl font-bold mb-2">Goal Set!</h2>
+              <p className="text-xl">Start saving for your dream!</p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Time Lock Status Bar */}
       {activeLocks.length > 0 && (
         <motion.div
@@ -172,7 +270,7 @@ export default function Goals() {
           <Link href="/dashboard">
             <Button variant="ghost" size="sm">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Dashboard
+              Dashboard
             </Button>
           </Link>
           <div className="flex items-center gap-2">
@@ -183,7 +281,12 @@ export default function Goals() {
               Product Goals
             </span>
           </div>
-          <div className="w-24"></div>
+          <Link href="/my-goals">
+            <Button variant="ghost" size="sm">
+              <Target className="w-4 h-4 mr-2" />
+              My Goals
+            </Button>
+          </Link>
         </div>
       </nav>
 
@@ -201,10 +304,10 @@ export default function Goals() {
                 <div>
                   <div className="flex items-center gap-2 mb-2 text-white/80">
                     <Sparkles className="w-5 h-5" />
-                    <span className="text-sm font-medium">Your Total Savings</span>
+                    <span className="text-sm font-medium">Your Wallet Balance</span>
                   </div>
                   <div className="text-5xl md:text-6xl font-bold mb-2">
-                    ₹{totalSavings.toLocaleString()}
+                    ₹{walletBalance.toLocaleString()}
                   </div>
                   <p className="text-white/80">Choose your dream product and start saving!</p>
                 </div>
@@ -275,9 +378,9 @@ export default function Goals() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProducts.map((product, i) => {
-              const progress = calculateProgress(product.price)
+              const progress = walletBalance >= product.price ? 100 : (walletBalance / product.price) * 100
               const daysToGoal = calculateDaysToGoal(product.price)
-              const canAfford = totalSavings >= product.price
+              const canAfford = walletBalance >= product.price
 
               return (
                 <motion.div
@@ -287,77 +390,189 @@ export default function Goals() {
                   transition={{ delay: 0.2 + i * 0.05 }}
                   whileHover={{ scale: 1.03, y: -5 }}
                 >
-                  <Link href={`/goals/${product.id}`}>
-                    <Card className="p-0 bg-white dark:bg-gray-800 hover:shadow-2xl transition-all duration-300 overflow-hidden group cursor-pointer h-full">
-                      {/* Product Image */}
-                      <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900/20 dark:to-purple-900/20">
-                        <img
-                          src={product.imageUrl}
-                          alt={product.name}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                        />
-                        {canAfford && (
-                          <Badge className="absolute top-4 right-4 bg-green-500 text-white border-0">
-                            <Sparkles className="w-3 h-3 mr-1" />
-                            Affordable!
-                          </Badge>
-                        )}
-                      </div>
-
-                      {/* Product Details */}
-                      <div className="p-6">
-                        <Badge className="mb-3 bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 border-0">
-                          {product.category}
+                  <Card className="p-0 bg-white dark:bg-gray-800 hover:shadow-2xl transition-all duration-300 overflow-hidden group cursor-pointer h-full"
+                    onClick={() => setSelectedProduct(product)}
+                  >
+                    {/* Product Image */}
+                    <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900/20 dark:to-purple-900/20">
+                      <img
+                        src={product.imageUrl}
+                        alt={product.name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      />
+                      {canAfford && (
+                        <Badge className="absolute top-4 right-4 bg-green-500 text-white border-0">
+                          <Sparkles className="w-3 h-3 mr-1" />
+                          Affordable!
                         </Badge>
-                        <h3 className="text-xl font-bold mb-2 line-clamp-1">{product.name}</h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
-                          {product.description}
-                        </p>
+                      )}
+                    </div>
 
-                        <div className="flex items-baseline gap-2 mb-4">
-                          <span className="text-3xl font-bold text-violet-600">
-                            ₹{(product.price / 100).toLocaleString()}
-                          </span>
-                        </div>
+                    {/* Product Details */}
+                    <div className="p-6">
+                      <Badge className="mb-3 bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 border-0">
+                        {product.category}
+                      </Badge>
+                      <h3 className="text-xl font-bold mb-2 line-clamp-1">{product.name}</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
+                        {product.description}
+                      </p>
 
-                        {/* Progress Bar */}
-                        <div className="mb-4">
-                          <div className="flex justify-between text-sm mb-2">
-                            <span className="text-gray-600 dark:text-gray-400">Your Progress</span>
-                            <span className="font-medium">{progress.toFixed(0)}%</span>
-                          </div>
-                          <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                            <motion.div
-                              initial={{ width: 0 }}
-                              animate={{ width: `${progress}%` }}
-                              transition={{ duration: 1, delay: 0.5 + i * 0.1 }}
-                              className="h-full bg-gradient-to-r from-violet-600 to-purple-600"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Days to Goal */}
-                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-4">
-                          <Clock className="w-4 h-4" />
-                          <span>
-                            {canAfford 
-                              ? "Ready to redeem!" 
-                              : `~${daysToGoal} days at ₹50/day`}
-                          </span>
-                        </div>
-
-                        <Button className="w-full bg-gradient-to-r from-violet-600 to-purple-600 group-hover:from-violet-700 group-hover:to-purple-700">
-                          {canAfford ? "Redeem Now" : "Set as Goal"}
-                        </Button>
+                      <div className="flex items-baseline gap-2 mb-4">
+                        <span className="text-3xl font-bold text-violet-600">
+                          ₹{(product.price / 100).toLocaleString()}
+                        </span>
                       </div>
-                    </Card>
-                  </Link>
+
+                      {/* Days to Goal */}
+                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-4">
+                        <Clock className="w-4 h-4" />
+                        <span>
+                          {canAfford 
+                            ? "You can afford this!" 
+                            : `~${daysToGoal} days at ₹50/day`}
+                        </span>
+                      </div>
+
+                      <Button className="w-full bg-gradient-to-r from-violet-600 to-purple-600 group-hover:from-violet-700 group-hover:to-purple-700">
+                        <Target className="w-4 h-4 mr-2" />
+                        Set as Goal
+                      </Button>
+                    </div>
+                  </Card>
                 </motion.div>
               )
             })}
           </div>
         )}
       </div>
+
+      {/* Create Goal Modal */}
+      <AnimatePresence>
+        {selectedProduct && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setSelectedProduct(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md"
+            >
+              <Card className="p-6 bg-white dark:bg-gray-800">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-2xl font-bold">Create Savings Goal</h3>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedProduct(null)}
+                  >
+                    <X className="w-5 h-5" />
+                  </Button>
+                </div>
+
+                {/* Product Info */}
+                <div className="mb-6 p-4 bg-violet-50 dark:bg-violet-900/20 rounded-lg">
+                  <div className="flex items-center gap-3 mb-3">
+                    <img
+                      src={selectedProduct.imageUrl}
+                      alt={selectedProduct.name}
+                      className="w-16 h-16 rounded-lg object-cover"
+                    />
+                    <div className="flex-1">
+                      <h4 className="font-bold line-clamp-1">{selectedProduct.name}</h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Product Price: ₹{(selectedProduct.price / 100).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <form onSubmit={handleCreateGoal} className="space-y-5">
+                  <div>
+                    <Label htmlFor="target-amount">Target Amount</Label>
+                    <Input
+                      id="target-amount"
+                      type="number"
+                      placeholder="Enter your target amount"
+                      value={targetAmount}
+                      onChange={(e) => setTargetAmount(e.target.value)}
+                      min={selectedProduct.price / 2}
+                      max={selectedProduct.price * 2}
+                      required
+                      className="mt-2 h-12"
+                    />
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                      Minimum: ₹{(selectedProduct.price / 2).toLocaleString()} • Suggested: ₹{(selectedProduct.price / 100).toLocaleString()}
+                    </p>
+                  </div>
+
+                  {/* Quick Amount Buttons */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setTargetAmount((selectedProduct.price / 100).toString())}
+                    >
+                      Product Price
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setTargetAmount(((selectedProduct.price / 100) * 1.2).toString())}
+                    >
+                      +20%
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setTargetAmount(((selectedProduct.price / 100) * 1.5).toString())}
+                    >
+                      +50%
+                    </Button>
+                  </div>
+
+                  <div className="bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-lg p-4">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="w-5 h-5 text-violet-600 mt-0.5 flex-shrink-0" />
+                      <div className="text-sm text-violet-700 dark:text-violet-300">
+                        <div className="font-medium mb-1">How it works:</div>
+                        <div>Add money to your goal from your wallet balance anytime. Track your progress and reach your target!</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <Button 
+                      type="button"
+                      variant="outline" 
+                      onClick={() => setSelectedProduct(null)}
+                      className="flex-1"
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      type="submit"
+                      disabled={isCreatingGoal || !targetAmount}
+                      className="flex-1 bg-gradient-to-r from-violet-600 to-purple-600"
+                    >
+                      {isCreatingGoal ? "Creating..." : "Create Goal"}
+                    </Button>
+                  </div>
+                </form>
+              </Card>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

@@ -171,3 +171,58 @@ export const userRewards = sqliteTable('user_rewards', {
   claimedAt: integer('claimed_at', { mode: 'timestamp' }).notNull(),
   orderId: integer('order_id').references(() => ordersV2.id),
 });
+
+// Wallet table
+export const wallet = sqliteTable('wallet', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: text('user_id')
+    .notNull()
+    .unique()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  balance: integer('balance', { mode: 'number' }).notNull().default(0),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+});
+
+// User Goals table
+export const userGoals = sqliteTable('user_goals', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  productId: integer('product_id')
+    .notNull()
+    .references(() => products.id),
+  targetAmount: integer('target_amount', { mode: 'number' }).notNull(),
+  currentAmount: integer('current_amount', { mode: 'number' }).notNull().default(0),
+  status: text('status').notNull().default('active'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  completedAt: integer('completed_at', { mode: 'timestamp' }),
+});
+
+// Goal Contributions table
+export const goalContributions = sqliteTable('goal_contributions', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  goalId: integer('goal_id')
+    .notNull()
+    .references(() => userGoals.id, { onDelete: 'cascade' }),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  amount: integer('amount', { mode: 'number' }).notNull(),
+  contributionDate: integer('contribution_date', { mode: 'timestamp' }).notNull(),
+  notes: text('notes'),
+});
+
+// Wallet Transactions table
+export const walletTransactions = sqliteTable('wallet_transactions', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  amount: integer('amount', { mode: 'number' }).notNull(),
+  type: text('type').notNull(),
+  referenceId: integer('reference_id'),
+  description: text('description'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+});

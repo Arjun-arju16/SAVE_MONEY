@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { lockedSavings, transactionsV2 } from '@/db/schema';
+import { lockedSavings, transactionsV2, wallet, walletTransactions } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
@@ -98,50 +98,95 @@ export async function POST(request: NextRequest) {
       finalAmount = savings.amount - penalty;
       newStatus = 'early_withdrawal';
       transactionType = 'early_withdrawal';
-      message = `Early withdrawal processed with 10% penalty. You received ${finalAmount.toFixed(2)} from your original ${savings.amount.toFixed(2)}.`;
+      message = `Early withdrawal processed with 10% penalty. You received ₹${finalAmount.toFixed(2)} to your wallet from your original ₹${savings.amount.toFixed(2)}.`;
     } else {
       // Normal withdrawal (unlocked)
       penalty = 0;
       finalAmount = savings.amount;
       newStatus = 'withdrawn';
       transactionType = 'withdrawal';
-      message = `Withdrawal processed successfully. You received the full amount of ${finalAmount.toFixed(2)}.`;
+      message = `Withdrawal processed successfully. You received ₹${finalAmount.toFixed(2)} to your wallet.`;
     }
 
-    // Update the savings record with new status
-    const updated = await db
-      .update(lockedSavings)
-      .set({
-        status: newStatus,
-      })
-      .where(
-        and(
-          eq(lockedSavings.id, savingsIdInt),
-          eq(lockedSavings.userId, userId)
+    // Execute all operations in a transaction
+    const result = await db.transaction(async (tx) => {
+      // Update the savings record with new status
+      const updated = await tx
+        .update(lockedSavings)
+        .set({
+          status: newStatus,
+        })
+        .where(
+          and(
+            eq(lockedSavings.id, savingsIdInt),
+            eq(lockedSavings.userId, userId)
+          )
         )
-      )
-      .returning();
+        .returning();
 
-    if (updated.length === 0) {
-      return NextResponse.json(
-        { error: 'Failed to update savings record', code: 'UPDATE_FAILED' },
-        { status: 500 }
-      );
-    }
+      if (updated.length === 0) {
+        throw new Error('Failed to update savings record');
+      }
 
-    // Create transaction record for the withdrawal
-    await db.insert(transactionsV2).values({
-      userId,
-      type: transactionType,
-      amount: finalAmount,
-      penalty: penalty > 0 ? penalty : null,
-      status: 'completed',
-      savingsId: savingsIdInt,
-      description: isEarlyWithdrawal 
-        ? `Early withdrawal with 10% penalty (${penalty.toFixed(2)})`
-        : `Withdrawal of unlocked savings`,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      // Create transaction record for the withdrawal
+      await tx.insert(transactionsV2).values({
+        userId,
+        type: transactionType,
+        amount: finalAmount,
+        penalty: penalty > 0 ? penalty : null,
+        status: 'completed',
+        savingsId: savingsIdInt,
+        description: isEarlyWithdrawal 
+          ? `Early withdrawal with 10% penalty (₹${penalty.toFixed(2)})`
+          : `Withdrawal of unlocked savings`,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      // Get or create wallet
+      let userWallet = await tx
+        .select()
+        .from(wallet)
+        .where(eq(wallet.userId, userId))
+        .limit(1);
+
+      if (userWallet.length === 0) {
+        // Create wallet if doesn't exist
+        const newWallet = await tx
+          .insert(wallet)
+          .values({
+            userId,
+            balance: 0,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .returning();
+        userWallet = newWallet;
+      }
+
+      // Update wallet balance - add withdrawn amount
+      const newBalance = userWallet[0].balance + finalAmount;
+      await tx
+        .update(wallet)
+        .set({
+          balance: newBalance,
+          updatedAt: new Date(),
+        })
+        .where(eq(wallet.userId, userId));
+
+      // Create wallet transaction record
+      await tx.insert(walletTransactions).values({
+        userId,
+        amount: finalAmount,
+        type: 'deposit',
+        referenceId: savingsIdInt,
+        description: isEarlyWithdrawal
+          ? `Deposit from early withdrawal (penalty: ₹${penalty.toFixed(2)})`
+          : `Deposit from unlocked savings withdrawal`,
+        createdAt: new Date(),
+      });
+
+      return { updated: updated[0], newBalance };
     });
 
     // Return withdrawal details
@@ -153,6 +198,7 @@ export async function POST(request: NextRequest) {
         penalty: penalty,
         isEarlyWithdrawal: isEarlyWithdrawal,
         status: newStatus,
+        walletBalance: result.newBalance,
         message: message
       },
       { status: 200 }
