@@ -1,18 +1,66 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Smartphone, Headphones, ShoppingBag, Laptop, Watch, Gift, TrendingUp } from "lucide-react"
+import { ArrowLeft, Smartphone, Headphones, ShoppingBag, Laptop, Watch, Gift, TrendingUp, Lock, Clock } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { Progress } from "@/components/ui/progress"
+import { useSession } from "@/lib/auth-client"
+import { useRouter } from "next/navigation"
+
+interface LockedSaving {
+  id: number
+  amount: number
+  lockDays: number
+  unlockAt: string
+  status: string
+  isUnlocked: boolean
+  daysRemaining: number
+}
 
 export default function Rewards() {
+  const { data: session, isPending } = useSession()
+  const router = useRouter()
   const [filter, setFilter] = useState("all")
-  const userBalance = 15000
+  const [userBalance, setUserBalance] = useState(0)
+  const [activeLocks, setActiveLocks] = useState<LockedSaving[]>([])
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!isPending && !session?.user) {
+      router.push("/login")
+    }
+  }, [session, isPending, router])
+
+  // Fetch user savings
+  useEffect(() => {
+    const fetchSavings = async () => {
+      const token = localStorage.getItem("bearer_token")
+      if (!token) return
+
+      try {
+        const response = await fetch("/api/savings/active", {
+          headers: { "Authorization": `Bearer ${token}` }
+        })
+        if (response.ok) {
+          const data = await response.json()
+          setActiveLocks(data)
+          const total = data.reduce((sum: number, saving: LockedSaving) => sum + saving.amount, 0)
+          setUserBalance(total)
+        }
+      } catch (error) {
+        console.error("Failed to fetch savings:", error)
+      }
+    }
+
+    if (session?.user) {
+      fetchSavings()
+    }
+  }, [session])
 
   const products = [
     {
@@ -93,10 +141,49 @@ export default function Rewards() {
     return Math.ceil(remaining / dailySaving)
   }
 
+  if (isPending || !session?.user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-purple-950 dark:to-gray-900">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-violet-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-purple-950 dark:to-gray-900">
+      {/* Time Lock Status Bar */}
+      {activeLocks.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="sticky top-0 z-50 backdrop-blur-xl bg-gradient-to-r from-orange-500/90 to-amber-500/90 border-b border-orange-300/50"
+        >
+          <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Lock className="w-5 h-5 text-white" />
+              <span className="text-white font-medium">
+                {activeLocks.filter(l => !l.isUnlocked).length} Active Lock{activeLocks.filter(l => !l.isUnlocked).length !== 1 ? 's' : ''}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-white text-sm">
+              <Clock className="w-4 h-4" />
+              <span>
+                Next unlock: {activeLocks.filter(l => !l.isUnlocked).length > 0 
+                  ? new Date(activeLocks.filter(l => !l.isUnlocked).sort((a, b) => 
+                      new Date(a.unlockAt).getTime() - new Date(b.unlockAt).getTime()
+                    )[0].unlockAt).toLocaleDateString()
+                  : 'None'}
+              </span>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
       {/* Navigation */}
-      <nav className="sticky top-0 z-50 backdrop-blur-xl bg-white/70 dark:bg-gray-900/70 border-b border-gray-200/50 dark:border-gray-800/50">
+      <nav className="sticky top-12 z-40 backdrop-blur-xl bg-white/70 dark:bg-gray-900/70 border-b border-gray-200/50 dark:border-gray-800/50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/dashboard">
             <Button variant="ghost" size="sm">

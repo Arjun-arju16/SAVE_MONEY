@@ -218,7 +218,7 @@ export default function Home() {
                 ) : (
                   <Link href="/login">
                     <Button size="lg" className="bg-white text-violet-600 hover:bg-gray-100 text-lg px-8 py-6 rounded-xl shadow-xl">
-                      <LogIn className="ml-2 w-5 h-5 mr-2" />
+                      <LogIn className="mr-2 w-5 h-5" />
                       Get Started Now
                       <ArrowRight className="ml-2 w-5 h-5" />
                     </Button>

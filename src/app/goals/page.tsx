@@ -1,67 +1,173 @@
 "use client"
 
-import { useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { useState, useEffect } from "react"
+import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Target, Trophy, Zap, Calendar, TrendingUp, Plus, Sparkles, Gift } from "lucide-react"
+import { ArrowLeft, Search, Filter, ShoppingBag, Sparkles, TrendingUp, Clock, Lock } from "lucide-react"
 import Link from "next/link"
-import { Progress } from "@/components/ui/progress"
+import { useSession } from "@/lib/auth-client"
+import { useRouter } from "next/navigation"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
+interface Product {
+  id: number
+  name: string
+  category: string
+  price: number
+  imageUrl: string
+  description: string
+  available: boolean
+}
+
+interface LockedSaving {
+  id: number
+  amount: number
+  lockDays: number
+  unlockAt: string
+  status: string
+  isUnlocked: boolean
+  daysRemaining: number
+}
 
 export default function Goals() {
-  const [userBalance] = useState(15000)
-  const [showNewGoal, setShowNewGoal] = useState(false)
-  const [selectedProduct, setSelectedProduct] = useState("")
-  const [targetAmount, setTargetAmount] = useState("")
-  const [dailyContribution, setDailyContribution] = useState("")
+  const { data: session, isPending } = useSession()
+  const router = useRouter()
+  const [products, setProducts] = useState<Product[]>([])
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [categoryFilter, setCategoryFilter] = useState("all")
+  const [totalSavings, setTotalSavings] = useState(0)
+  const [activeLocks, setActiveLocks] = useState<LockedSaving[]>([])
 
-  const goals = [
-    {
-      id: 1,
-      name: "AirPods Pro",
-      target: 24900,
-      current: 15000,
-      dailySaving: 50,
-      daysLeft: 198,
-      streak: 12,
-      emoji: "🎧"
-    },
-    {
-      id: 2,
-      name: "Nike Shoes",
-      target: 12995,
-      current: 8500,
-      dailySaving: 30,
-      daysLeft: 149,
-      streak: 8,
-      emoji: "👟"
-    },
-  ]
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!isPending && !session?.user) {
+      router.push("/login")
+    }
+  }, [session, isPending, router])
 
-  const achievements = [
-    { name: "First Save", icon: Sparkles, color: "from-yellow-500 to-amber-500", unlocked: true },
-    { name: "7 Day Streak", icon: Zap, color: "from-orange-500 to-red-500", unlocked: true },
-    { name: "30 Day Streak", icon: Trophy, color: "from-violet-500 to-purple-500", unlocked: false },
-    { name: "Goal Achieved", icon: Target, color: "from-green-500 to-emerald-500", unlocked: false },
-  ]
+  // Fetch products
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const response = await fetch("/api/products")
+        if (response.ok) {
+          const data = await response.json()
+          setProducts(data)
+          setFilteredProducts(data)
+        }
+      } catch (error) {
+        console.error("Failed to fetch products:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
 
-  const calculateDaysToGoal = () => {
-    if (!targetAmount || !dailyContribution) return 0
-    const remaining = Math.max(0, parseFloat(targetAmount) - userBalance)
-    return Math.ceil(remaining / parseFloat(dailyContribution))
+    fetchProducts()
+  }, [])
+
+  // Fetch user savings
+  useEffect(() => {
+    const fetchSavings = async () => {
+      const token = localStorage.getItem("bearer_token")
+      if (!token) return
+
+      try {
+        const response = await fetch("/api/savings/active", {
+          headers: { "Authorization": `Bearer ${token}` }
+        })
+        if (response.ok) {
+          const data = await response.json()
+          setActiveLocks(data)
+          const total = data.reduce((sum: number, saving: LockedSaving) => sum + saving.amount, 0)
+          setTotalSavings(total)
+        }
+      } catch (error) {
+        console.error("Failed to fetch savings:", error)
+      }
+    }
+
+    if (session?.user) {
+      fetchSavings()
+    }
+  }, [session])
+
+  // Filter products
+  useEffect(() => {
+    let filtered = products
+
+    if (categoryFilter !== "all") {
+      filtered = filtered.filter(p => p.category === categoryFilter)
+    }
+
+    if (searchQuery) {
+      filtered = filtered.filter(p => 
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.description.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    }
+
+    setFilteredProducts(filtered)
+  }, [searchQuery, categoryFilter, products])
+
+  const categories = ["all", ...Array.from(new Set(products.map(p => p.category)))]
+
+  const calculateProgress = (price: number) => {
+    return Math.min((totalSavings / price) * 100, 100)
   }
 
-  const calculateProgress = (current: number, target: number) => {
-    return Math.min((current / target) * 100, 100)
+  const calculateDaysToGoal = (price: number, dailySavings: number = 50) => {
+    const remaining = Math.max(0, price - totalSavings)
+    return Math.ceil(remaining / dailySavings)
+  }
+
+  if (isPending || !session?.user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-purple-950 dark:to-gray-900">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-violet-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-purple-950 dark:to-gray-900">
+      {/* Time Lock Status Bar */}
+      {activeLocks.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="sticky top-0 z-50 backdrop-blur-xl bg-gradient-to-r from-orange-500/90 to-amber-500/90 border-b border-orange-300/50"
+        >
+          <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Lock className="w-5 h-5 text-white" />
+              <span className="text-white font-medium">
+                {activeLocks.filter(l => !l.isUnlocked).length} Active Lock{activeLocks.filter(l => !l.isUnlocked).length !== 1 ? 's' : ''}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-white text-sm">
+              <Clock className="w-4 h-4" />
+              <span>
+                Next unlock: {activeLocks.filter(l => !l.isUnlocked).length > 0 
+                  ? new Date(activeLocks.filter(l => !l.isUnlocked).sort((a, b) => 
+                      new Date(a.unlockAt).getTime() - new Date(b.unlockAt).getTime()
+                    )[0].unlockAt).toLocaleDateString()
+                  : 'None'}
+              </span>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
       {/* Navigation */}
-      <nav className="sticky top-0 z-50 backdrop-blur-xl bg-white/70 dark:bg-gray-900/70 border-b border-gray-200/50 dark:border-gray-800/50">
+      <nav className="sticky top-12 z-40 backdrop-blur-xl bg-white/70 dark:bg-gray-900/70 border-b border-gray-200/50 dark:border-gray-800/50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/dashboard">
             <Button variant="ghost" size="sm">
@@ -71,313 +177,187 @@ export default function Goals() {
           </Link>
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-600 to-purple-600 flex items-center justify-center">
-              <Target className="w-5 h-5 text-white" />
+              <ShoppingBag className="w-5 h-5 text-white" />
             </div>
             <span className="text-xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
-              Savings Goals
+              Product Goals
             </span>
           </div>
-          <Button 
-            onClick={() => setShowNewGoal(true)}
-            className="bg-gradient-to-r from-violet-600 to-purple-600"
-            size="sm"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            New Goal
-          </Button>
+          <div className="w-24"></div>
         </div>
       </nav>
 
       <div className="max-w-7xl mx-auto px-6 py-12">
-        {/* Hero Stats */}
+        {/* Hero Section with Balance */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12"
+          className="mb-12"
         >
-          <Card className="p-6 bg-gradient-to-br from-violet-600 to-purple-600 border-0 text-white">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-sm font-medium opacity-90">Total Saved</span>
-              <Trophy className="w-5 h-5 opacity-90" />
+          <Card className="p-8 bg-gradient-to-br from-violet-600 via-purple-600 to-pink-600 border-0 text-white relative overflow-hidden">
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzBoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyeiIvPjwvZz48L2c+PC9zdmc+')] opacity-20"></div>
+            <div className="relative z-10">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                <div>
+                  <div className="flex items-center gap-2 mb-2 text-white/80">
+                    <Sparkles className="w-5 h-5" />
+                    <span className="text-sm font-medium">Your Total Savings</span>
+                  </div>
+                  <div className="text-5xl md:text-6xl font-bold mb-2">
+                    ₹{totalSavings.toLocaleString()}
+                  </div>
+                  <p className="text-white/80">Choose your dream product and start saving!</p>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Badge className="bg-white/20 text-white border-white/30 text-base px-4 py-2">
+                    <TrendingUp className="w-4 h-4 mr-2" />
+                    {products.length} Products Available
+                  </Badge>
+                </div>
+              </div>
             </div>
-            <div className="text-4xl font-bold">₹{userBalance.toLocaleString()}</div>
-            <div className="text-sm opacity-90 mt-2">Keep going! 🎯</div>
-          </Card>
-
-          <Card className="p-6 bg-gradient-to-br from-pink-600 to-rose-600 border-0 text-white">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-sm font-medium opacity-90">Active Goals</span>
-              <Target className="w-5 h-5 opacity-90" />
-            </div>
-            <div className="text-4xl font-bold">{goals.length}</div>
-            <div className="text-sm opacity-90 mt-2">Stay focused! 💪</div>
-          </Card>
-
-          <Card className="p-6 bg-gradient-to-br from-orange-600 to-amber-600 border-0 text-white">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-sm font-medium opacity-90">Current Streak</span>
-              <Zap className="w-5 h-5 opacity-90" />
-            </div>
-            <div className="text-4xl font-bold">12 Days</div>
-            <div className="text-sm opacity-90 mt-2">On fire! 🔥</div>
           </Card>
         </motion.div>
 
-        {/* Active Goals */}
+        {/* Search and Filter */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="mb-12"
+          className="mb-8 flex flex-col md:flex-row gap-4"
         >
-          <h2 className="text-3xl font-bold mb-6">Your Goals</h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {goals.map((goal, i) => {
-              const progress = calculateProgress(goal.current, goal.target)
-              return (
-                <motion.div
-                  key={goal.id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.2 + i * 0.1 }}
-                  whileHover={{ scale: 1.02 }}
-                >
-                  <Card className="p-6 bg-white dark:bg-gray-800 hover:shadow-xl transition-all">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="text-4xl">{goal.emoji}</div>
-                        <div>
-                          <h3 className="text-xl font-bold">{goal.name}</h3>
-                          <div className="text-sm text-gray-600 dark:text-gray-400">
-                            ₹{goal.current.toLocaleString()} / ₹{goal.target.toLocaleString()}
-                          </div>
-                        </div>
-                      </div>
-                      <Badge className="bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 border-0">
-                        <Zap className="w-3 h-3 mr-1" />
-                        {goal.streak} days
-                      </Badge>
-                    </div>
-
-                    <div className="space-y-4 mb-6">
-                      <div>
-                        <div className="flex justify-between text-sm mb-2">
-                          <span className="text-gray-600 dark:text-gray-400">Progress</span>
-                          <span className="font-medium">{progress.toFixed(1)}%</span>
-                        </div>
-                        <Progress value={progress} className="h-3" />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-violet-50 dark:bg-violet-900/20 rounded-lg p-3">
-                          <div className="flex items-center gap-2 text-violet-600 dark:text-violet-400 text-sm mb-1">
-                            <TrendingUp className="w-4 h-4" />
-                            Daily Target
-                          </div>
-                          <div className="font-bold text-lg">₹{goal.dailySaving}</div>
-                        </div>
-                        <div className="bg-pink-50 dark:bg-pink-900/20 rounded-lg p-3">
-                          <div className="flex items-center gap-2 text-pink-600 dark:text-pink-400 text-sm mb-1">
-                            <Calendar className="w-4 h-4" />
-                            Days Left
-                          </div>
-                          <div className="font-bold text-lg">{goal.daysLeft}</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <Button className="w-full bg-gradient-to-r from-violet-600 to-purple-600">
-                      Add Today's Savings
-                    </Button>
-                  </Card>
-                </motion.div>
-              )
-            })}
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Input
+              type="text"
+              placeholder="Search products..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 h-12 bg-white dark:bg-gray-800"
+            />
           </div>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-full md:w-48 h-12 bg-white dark:bg-gray-800">
+              <Filter className="w-4 h-4 mr-2" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map(cat => (
+                <SelectItem key={cat} value={cat}>
+                  {cat === "all" ? "All Categories" : cat}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </motion.div>
 
-        {/* Achievements */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <h2 className="text-3xl font-bold mb-6">Achievements</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {achievements.map((achievement, i) => {
-              const Icon = achievement.icon
-              return (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.4 + i * 0.1 }}
-                  whileHover={{ scale: 1.05 }}
-                >
-                  <Card className={`p-6 text-center ${achievement.unlocked ? 'bg-white dark:bg-gray-800' : 'bg-gray-100 dark:bg-gray-800/50 opacity-60'}`}>
-                    <div className={`w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br ${achievement.color} flex items-center justify-center ${!achievement.unlocked && 'grayscale'}`}>
-                      <Icon className="w-8 h-8 text-white" />
-                    </div>
-                    <div className="font-bold text-sm">{achievement.name}</div>
-                    {achievement.unlocked && (
-                      <Badge className="mt-2 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 border-0">
-                        Unlocked
-                      </Badge>
-                    )}
-                  </Card>
-                </motion.div>
-              )
-            })}
-          </div>
-        </motion.div>
-
-        {/* Goal Calculator */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="mt-12"
-        >
-          <Card className="p-8 bg-gradient-to-br from-violet-600 via-purple-600 to-pink-600 border-0 text-white">
-            <h2 className="text-3xl font-bold mb-2">Goal Calculator</h2>
-            <p className="text-white/90 mb-6">Calculate how long it takes to reach your goal</p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div>
-                <Label htmlFor="target" className="text-white mb-2">Target Amount</Label>
-                <Input
-                  id="target"
-                  type="number"
-                  placeholder="₹24,900"
-                  value={targetAmount}
-                  onChange={(e) => setTargetAmount(e.target.value)}
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/60"
-                />
-              </div>
-              <div>
-                <Label htmlFor="daily" className="text-white mb-2">Daily Savings</Label>
-                <Input
-                  id="daily"
-                  type="number"
-                  placeholder="₹50"
-                  value={dailyContribution}
-                  onChange={(e) => setDailyContribution(e.target.value)}
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/60"
-                />
-              </div>
-              <div className="flex items-end">
-                <div className="w-full bg-white/10 rounded-lg p-4 border border-white/20">
-                  <div className="text-sm text-white/80 mb-1">Days to Goal</div>
-                  <div className="text-3xl font-bold">{calculateDaysToGoal()}</div>
-                </div>
-              </div>
-            </div>
-
-            {calculateDaysToGoal() > 0 && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                className="bg-white/10 rounded-lg p-4 border border-white/20"
-              >
-                <div className="text-sm">
-                  Starting with ₹{userBalance.toLocaleString()}, saving ₹{dailyContribution}/day, 
-                  you'll reach ₹{targetAmount} in <strong>{calculateDaysToGoal()} days</strong>! 
-                  That's approximately <strong>{(calculateDaysToGoal() / 30).toFixed(1)} months</strong>. 🎯
-                </div>
-              </motion.div>
-            )}
-          </Card>
-        </motion.div>
-      </div>
-
-      {/* New Goal Modal */}
-      <AnimatePresence>
-        {showNewGoal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setShowNewGoal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md"
-            >
-              <Card className="p-6 bg-white dark:bg-gray-800">
-                <h3 className="text-2xl font-bold mb-6">Create New Goal</h3>
-                
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="product-name">Product Name</Label>
-                    <Input
-                      id="product-name"
-                      placeholder="e.g., iPhone 15 Pro"
-                      value={selectedProduct}
-                      onChange={(e) => setSelectedProduct(e.target.value)}
-                      className="mt-2"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="goal-amount">Target Amount</Label>
-                    <Input
-                      id="goal-amount"
-                      type="number"
-                      placeholder="₹134,900"
-                      className="mt-2"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="daily-save">Daily Savings Goal</Label>
-                    <Input
-                      id="daily-save"
-                      type="number"
-                      placeholder="₹100"
-                      className="mt-2"
-                    />
-                  </div>
-
-                  <div className="bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-lg p-4">
-                    <div className="flex items-start gap-2">
-                      <Gift className="w-5 h-5 text-violet-600 mt-0.5" />
-                      <div className="text-sm">
-                        <div className="font-medium text-violet-900 dark:text-violet-300 mb-1">Pro Tip</div>
-                        <div className="text-violet-700 dark:text-violet-400">
-                          Set a realistic daily goal to build a consistent savings habit
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3 pt-4">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setShowNewGoal(false)}
-                      className="flex-1"
-                    >
-                      Cancel
-                    </Button>
-                    <Button 
-                      onClick={() => {
-                        setShowNewGoal(false)
-                        setSelectedProduct("")
-                      }}
-                      className="flex-1 bg-gradient-to-r from-violet-600 to-purple-600"
-                    >
-                      Create Goal
-                    </Button>
-                  </div>
-                </div>
+        {/* Product Grid */}
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <Card key={i} className="p-6 bg-white dark:bg-gray-800 animate-pulse">
+                <div className="aspect-square bg-gray-200 dark:bg-gray-700 rounded-lg mb-4"></div>
+                <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
               </Card>
-            </motion.div>
-          </motion.div>
+            ))}
+          </div>
+        ) : filteredProducts.length === 0 ? (
+          <Card className="p-12 bg-white dark:bg-gray-800 text-center">
+            <div className="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mx-auto mb-4">
+              <ShoppingBag className="w-10 h-10 text-gray-400" />
+            </div>
+            <h3 className="text-xl font-bold mb-2">No Products Found</h3>
+            <p className="text-gray-600 dark:text-gray-400">
+              Try adjusting your search or filter criteria
+            </p>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredProducts.map((product, i) => {
+              const progress = calculateProgress(product.price)
+              const daysToGoal = calculateDaysToGoal(product.price)
+              const canAfford = totalSavings >= product.price
+
+              return (
+                <motion.div
+                  key={product.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 + i * 0.05 }}
+                  whileHover={{ scale: 1.03, y: -5 }}
+                >
+                  <Link href={`/goals/${product.id}`}>
+                    <Card className="p-0 bg-white dark:bg-gray-800 hover:shadow-2xl transition-all duration-300 overflow-hidden group cursor-pointer h-full">
+                      {/* Product Image */}
+                      <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900/20 dark:to-purple-900/20">
+                        <img
+                          src={product.imageUrl}
+                          alt={product.name}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        />
+                        {canAfford && (
+                          <Badge className="absolute top-4 right-4 bg-green-500 text-white border-0">
+                            <Sparkles className="w-3 h-3 mr-1" />
+                            Affordable!
+                          </Badge>
+                        )}
+                      </div>
+
+                      {/* Product Details */}
+                      <div className="p-6">
+                        <Badge className="mb-3 bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 border-0">
+                          {product.category}
+                        </Badge>
+                        <h3 className="text-xl font-bold mb-2 line-clamp-1">{product.name}</h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
+                          {product.description}
+                        </p>
+
+                        <div className="flex items-baseline gap-2 mb-4">
+                          <span className="text-3xl font-bold text-violet-600">
+                            ₹{(product.price / 100).toLocaleString()}
+                          </span>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="mb-4">
+                          <div className="flex justify-between text-sm mb-2">
+                            <span className="text-gray-600 dark:text-gray-400">Your Progress</span>
+                            <span className="font-medium">{progress.toFixed(0)}%</span>
+                          </div>
+                          <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{ width: `${progress}%` }}
+                              transition={{ duration: 1, delay: 0.5 + i * 0.1 }}
+                              className="h-full bg-gradient-to-r from-violet-600 to-purple-600"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Days to Goal */}
+                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-4">
+                          <Clock className="w-4 h-4" />
+                          <span>
+                            {canAfford 
+                              ? "Ready to redeem!" 
+                              : `~${daysToGoal} days at ₹50/day`}
+                          </span>
+                        </div>
+
+                        <Button className="w-full bg-gradient-to-r from-violet-600 to-purple-600 group-hover:from-violet-700 group-hover:to-purple-700">
+                          {canAfford ? "Redeem Now" : "Set as Goal"}
+                        </Button>
+                      </div>
+                    </Card>
+                  </Link>
+                </motion.div>
+              )
+            })}
+          </div>
         )}
-      </AnimatePresence>
+      </div>
     </div>
   )
 }

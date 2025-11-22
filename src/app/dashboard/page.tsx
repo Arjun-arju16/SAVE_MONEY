@@ -125,7 +125,7 @@ export default function Dashboard() {
     if (isEarly) {
       const penalty = amount * 0.1
       const finalAmount = amount - penalty
-      
+
       const confirmed = window.confirm(`Early withdrawal will incur a 10% penalty (₹${penalty.toFixed(2)}). You will receive ₹${finalAmount.toFixed(2)}. Continue?`)
       if (!confirmed) {
         return
@@ -221,8 +221,36 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
+      {/* Time Lock Status Bar */}
+      {activeSavings.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="sticky top-0 z-50 backdrop-blur-xl bg-gradient-to-r from-orange-500/90 to-amber-500/90 border-b border-orange-300/50"
+        >
+          <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Lock className="w-5 h-5 text-white" />
+              <span className="text-white font-medium">
+                {activeSavings.filter(l => !l.isUnlocked).length} Active Lock{activeSavings.filter(l => !l.isUnlocked).length !== 1 ? 's' : ''}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-white text-sm">
+              <Clock className="w-4 h-4" />
+              <span>
+                Next unlock: {activeSavings.filter(l => !l.isUnlocked).length > 0 
+                  ? new Date(activeSavings.filter(l => !l.isUnlocked).sort((a, b) => 
+                      new Date(a.unlockAt).getTime() - new Date(b.unlockAt).getTime()
+                    )[0].unlockAt).toLocaleDateString()
+                  : 'None'}
+              </span>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
       {/* Navigation */}
-      <nav className="sticky top-0 z-50 backdrop-blur-xl bg-white/70 dark:bg-gray-900/70 border-b border-gray-200/50 dark:border-gray-800/50">
+      <nav className="sticky top-12 z-40 backdrop-blur-xl bg-white/70 dark:bg-gray-900/70 border-b border-gray-200/50 dark:border-gray-800/50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/">
             <Button variant="ghost" size="sm">
@@ -258,7 +286,7 @@ export default function Dashboard() {
           className="mb-8"
         >
           <Card className="p-8 bg-gradient-to-br from-violet-600 via-purple-600 to-pink-600 border-0 text-white relative overflow-hidden">
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzBoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyeiIvPjwvZz48L2c+PC9zdmc+')] opacity-20"></div>
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzBoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyeiIvPjwvZz48L2c+PC9zdmc+')] opacity-20"></div>
             <div className="relative z-10">
               <div className="flex items-center gap-2 mb-4 text-white/80">
                 <Shield className="w-5 h-5" />
