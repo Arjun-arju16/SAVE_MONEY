@@ -81,17 +81,54 @@ export const lockedSavings = sqliteTable('locked_savings', {
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 });
 
-// Transactions table
-export const transactions = sqliteTable('transactions', {
+// Products table
+export const products = sqliteTable('products', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  category: text('category').notNull(),
+  price: integer('price', { mode: 'number' }).notNull(),
+  imageUrl: text('image_url'),
+  description: text('description'),
+  available: integer('available', { mode: 'boolean' }).notNull().default(true),
+});
+
+// Orders table - migrated structure
+export const ordersV2 = sqliteTable('orders_v2', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   userId: text('user_id')
     .notNull()
     .references(() => user.id, { onDelete: 'cascade' }),
-  amount: integer('amount', { mode: 'number' }).notNull(),
-  type: text('type').notNull(),
+  productId: integer('product_id')
+    .notNull()
+    .references(() => products.id),
+  productName: text('product_name').notNull(),
+  productPrice: integer('product_price', { mode: 'number' }).notNull(),
+  quantity: integer('quantity').notNull().default(1),
+  totalAmount: integer('total_amount', { mode: 'number' }).notNull(),
   status: text('status').notNull().default('pending'),
+  shippingAddress: text('shipping_address'),
+  trackingNumber: text('tracking_number'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+  completedAt: integer('completed_at', { mode: 'timestamp' }),
+});
+
+// Transactions table - migrated structure
+export const transactionsV2 = sqliteTable('transactions_v2', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  type: text('type').notNull(),
+  amount: integer('amount', { mode: 'number' }).notNull(),
+  penalty: integer('penalty', { mode: 'number' }),
+  status: text('status').notNull().default('completed'),
+  lockDays: integer('lock_days'),
+  savingsId: integer('savings_id').references(() => lockedSavings.id),
+  orderId: integer('order_id').references(() => ordersV2.id),
   description: text('description'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });
 
 // Goals table
@@ -122,28 +159,15 @@ export const rewards = sqliteTable('rewards', {
   earnedAt: integer('earned_at', { mode: 'timestamp' }).notNull(),
 });
 
-// Products table
-export const products = sqliteTable('products', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  name: text('name').notNull(),
-  category: text('category').notNull(),
-  price: integer('price', { mode: 'number' }).notNull(),
-  imageUrl: text('image_url'),
-  description: text('description'),
-  available: integer('available', { mode: 'boolean' }).notNull().default(true),
-});
-
-// Orders table
-export const orders = sqliteTable('orders', {
+// User rewards table
+export const userRewards = sqliteTable('user_rewards', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   userId: text('user_id')
     .notNull()
     .references(() => user.id, { onDelete: 'cascade' }),
-  productId: integer('product_id')
-    .notNull()
-    .references(() => products.id),
-  amountPaid: integer('amount_paid', { mode: 'number' }).notNull(),
-  orderStatus: text('order_status').notNull().default('pending'),
-  orderedAt: integer('ordered_at', { mode: 'timestamp' }).notNull(),
-  deliveredAt: integer('delivered_at', { mode: 'timestamp' }),
+  productId: integer('product_id').notNull(),
+  productName: text('product_name').notNull(),
+  productPrice: integer('product_price', { mode: 'number' }).notNull(),
+  claimedAt: integer('claimed_at', { mode: 'timestamp' }).notNull(),
+  orderId: integer('order_id').references(() => ordersV2.id),
 });

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { lockedSavings } from '@/db/schema';
+import { lockedSavings, transactionsV2 } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
@@ -90,27 +90,29 @@ export async function POST(request: NextRequest) {
     let penalty: number;
     let newStatus: string;
     let message: string;
+    let transactionType: 'withdrawal' | 'early_withdrawal';
 
     if (isEarlyWithdrawal) {
       // Early withdrawal with 10% penalty
       penalty = savings.amount * 0.10;
       finalAmount = savings.amount - penalty;
       newStatus = 'early_withdrawal';
+      transactionType = 'early_withdrawal';
       message = `Early withdrawal processed with 10% penalty. You received ${finalAmount.toFixed(2)} from your original ${savings.amount.toFixed(2)}.`;
     } else {
       // Normal withdrawal (unlocked)
       penalty = 0;
       finalAmount = savings.amount;
       newStatus = 'withdrawn';
+      transactionType = 'withdrawal';
       message = `Withdrawal processed successfully. You received the full amount of ${finalAmount.toFixed(2)}.`;
     }
 
-    // Update the record with new status
+    // Update the savings record with new status
     const updated = await db
       .update(lockedSavings)
       .set({
         status: newStatus,
-        updatedAt: now.toISOString()
       })
       .where(
         and(
@@ -126,6 +128,21 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Create transaction record for the withdrawal
+    await db.insert(transactionsV2).values({
+      userId,
+      type: transactionType,
+      amount: finalAmount,
+      penalty: penalty > 0 ? penalty : null,
+      status: 'completed',
+      savingsId: savingsIdInt,
+      description: isEarlyWithdrawal 
+        ? `Early withdrawal with 10% penalty (${penalty.toFixed(2)})`
+        : `Withdrawal of unlocked savings`,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
 
     // Return withdrawal details
     return NextResponse.json(

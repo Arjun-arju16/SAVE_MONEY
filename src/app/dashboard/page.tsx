@@ -8,8 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { Wallet, Lock, AlertCircle, ArrowLeft, Plus, LogOut, Clock, TrendingUp, Shield, Target, Gift, Sparkles, Trophy, Zap } from "lucide-react"
+import { Wallet, Lock, AlertCircle, ArrowLeft, Plus, LogOut, Clock, TrendingUp, Shield, Target, Gift, History } from "lucide-react"
 import Link from "next/link"
 import { useSession, authClient } from "@/lib/auth-client"
 import { useRouter } from "next/navigation"
@@ -286,7 +285,7 @@ export default function Dashboard() {
           className="mb-8"
         >
           <Card className="p-8 bg-gradient-to-br from-violet-600 via-purple-600 to-pink-600 border-0 text-white relative overflow-hidden">
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzBoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyeiIvPjwvZz48L2c+PC9zdmc+')] opacity-20"></div>
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzBoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyeiIvPjwvZz48L2c+PC9zdmc+')] opacity-20"></div>
             <div className="relative z-10">
               <div className="flex items-center gap-2 mb-4 text-white/80">
                 <Shield className="w-5 h-5" />
@@ -315,12 +314,50 @@ export default function Dashboard() {
           </Card>
         </motion.div>
 
+        {/* Quick Action Cards - Goals, Rewards, History */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
+        >
+          <Link href="/goals">
+            <Card className="p-6 bg-white dark:bg-gray-800 hover:shadow-xl transition-all cursor-pointer group">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <Target className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-lg font-bold mb-1">Savings Goals</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Set targets for your dream products</p>
+            </Card>
+          </Link>
+
+          <Link href="/rewards">
+            <Card className="p-6 bg-white dark:bg-gray-800 hover:shadow-xl transition-all cursor-pointer group">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <Gift className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-lg font-bold mb-1">Rewards</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Browse products you can earn</p>
+            </Card>
+          </Link>
+
+          <Link href="/transaction-history">
+            <Card className="p-6 bg-white dark:bg-gray-800 hover:shadow-xl transition-all cursor-pointer group">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <History className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-lg font-bold mb-1">Transaction History</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">View all your activities</p>
+            </Card>
+          </Link>
+        </motion.div>
+
         {/* Info Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
+            transition={{ delay: 0.2 }}
           >
             <Card className="p-6 bg-white dark:bg-gray-800">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center mb-4">
@@ -334,7 +371,7 @@ export default function Dashboard() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
+            transition={{ delay: 0.3 }}
           >
             <Card className="p-6 bg-white dark:bg-gray-800">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center mb-4">
@@ -348,7 +385,7 @@ export default function Dashboard() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
+            transition={{ delay: 0.4 }}
           >
             <Card className="p-6 bg-white dark:bg-gray-800">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center mb-4">
@@ -364,7 +401,7 @@ export default function Dashboard() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
+          transition={{ delay: 0.5 }}
         >
           <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
             <Lock className="w-6 h-6 text-violet-600" />
@@ -400,7 +437,7 @@ export default function Dashboard() {
                   key={saving.id}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.5 + i * 0.1 }}
+                  transition={{ delay: 0.6 + i * 0.1 }}
                 >
                   <Card className="p-6 bg-white dark:bg-gray-800 hover:shadow-xl transition-all">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -472,148 +509,6 @@ export default function Dashboard() {
             </div>
           )}
         </motion.div>
-
-        {/* Goals & Rewards Section - Shows after locking money */}
-        {activeSavings.length > 0 && (
-          <>
-            {/* Quick Goals Section */}
-            <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-              className="mt-12"
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold flex items-center gap-2">
-                  <Target className="w-6 h-6 text-violet-600" />
-                  Savings Goals
-                </h2>
-                <Link href="/goals">
-                  <Button variant="outline" size="sm">
-                    View All Goals
-                  </Button>
-                </Link>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.7 }}
-                  whileHover={{ scale: 1.02 }}
-                >
-                  <Card className="p-6 bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900/20 dark:to-purple-900/20 border-violet-200 dark:border-violet-800 hover:shadow-xl transition-all">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="text-4xl">🎧</div>
-                        <div>
-                          <h3 className="text-xl font-bold">AirPods Pro</h3>
-                          <div className="text-sm text-gray-600 dark:text-gray-400">
-                            ₹{totalLocked.toLocaleString()} / ₹24,900
-                          </div>
-                        </div>
-                      </div>
-                      <Badge className="bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 border-0">
-                        <Zap className="w-3 h-3 mr-1" />
-                        Active
-                      </Badge>
-                    </div>
-                    <Progress value={Math.min((totalLocked / 24900) * 100, 100)} className="h-3 mb-4" />
-                    <Link href="/goals">
-                      <Button className="w-full bg-gradient-to-r from-violet-600 to-purple-600">
-                        Track Progress
-                      </Button>
-                    </Link>
-                  </Card>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.8 }}
-                  whileHover={{ scale: 1.02 }}
-                >
-                  <Card className="p-6 bg-gradient-to-br from-pink-100 to-rose-100 dark:from-pink-900/20 dark:to-rose-900/20 border-pink-200 dark:border-pink-800 hover:shadow-xl transition-all">
-                    <div className="flex items-center justify-center h-full flex-col gap-4">
-                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-pink-600 to-rose-600 flex items-center justify-center">
-                        <Plus className="w-8 h-8 text-white" />
-                      </div>
-                      <div className="text-center">
-                        <h3 className="text-lg font-bold mb-2">Create New Goal</h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                          Set a target for your dream product
-                        </p>
-                      </div>
-                      <Link href="/goals">
-                        <Button variant="outline" className="border-pink-300 dark:border-pink-700">
-                          <Target className="w-4 h-4 mr-2" />
-                          Set Goal
-                        </Button>
-                      </Link>
-                    </div>
-                  </Card>
-                </motion.div>
-              </div>
-            </motion.div>
-
-            {/* Quick Rewards Section */}
-            <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.9 }}
-              className="mt-12"
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold flex items-center gap-2">
-                  <Gift className="w-6 h-6 text-pink-600" />
-                  Available Rewards
-                </h2>
-                <Link href="/rewards">
-                  <Button variant="outline" size="sm">
-                    View All Rewards
-                  </Button>
-                </Link>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {[
-                  { name: "AirPods Pro", price: 24900, emoji: "🎧", progress: (totalLocked / 24900) * 100 },
-                  { name: "Nike Shoes", price: 12995, emoji: "👟", progress: (totalLocked / 12995) * 100 },
-                  { name: "iPhone 15 Pro", price: 134900, emoji: "📱", progress: (totalLocked / 134900) * 100 },
-                ].map((product, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 1.0 + i * 0.1 }}
-                    whileHover={{ scale: 1.05 }}
-                  >
-                    <Card className="p-6 bg-white dark:bg-gray-800 hover:shadow-xl transition-all">
-                      <div className="text-center mb-4">
-                        <div className="text-5xl mb-3">{product.emoji}</div>
-                        <h3 className="text-lg font-bold mb-1">{product.name}</h3>
-                        <div className="text-2xl font-bold text-violet-600">
-                          ₹{product.price.toLocaleString()}
-                        </div>
-                      </div>
-                      <div className="space-y-2 mb-4">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600 dark:text-gray-400">Progress</span>
-                          <span className="font-medium">{Math.min(product.progress, 100).toFixed(1)}%</span>
-                        </div>
-                        <Progress value={Math.min(product.progress, 100)} className="h-2" />
-                      </div>
-                      <Button variant="outline" className="w-full" size="sm">
-                        <Sparkles className="w-4 h-4 mr-2" />
-                        View Details
-                      </Button>
-                    </Card>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          </>
-        )}
       </div>
 
       {/* Lock Money Modal */}

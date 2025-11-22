@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { lockedSavings } from '@/db/schema';
+import { lockedSavings, transactionsV2 } from '@/db/schema';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
 
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     const unlockAt = new Date(Date.now() + parsedLockDays * 24 * 60 * 60 * 1000);
     const createdAt = new Date();
 
-    // Insert into database
+    // Insert into locked_savings
     const newLockedSaving = await db
       .insert(lockedSavings)
       .values({
@@ -96,6 +96,19 @@ export async function POST(request: NextRequest) {
         createdAt,
       })
       .returning();
+
+    // Create transaction record for the lock action
+    await db.insert(transactionsV2).values({
+      userId,
+      type: 'lock',
+      amount: parsedAmount,
+      status: 'completed',
+      lockDays: parsedLockDays,
+      savingsId: newLockedSaving[0].id,
+      description: `Locked ${parsedAmount} for ${parsedLockDays} days`,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
 
     // Return created record with 201 status
     return NextResponse.json(newLockedSaving[0], { status: 201 });
