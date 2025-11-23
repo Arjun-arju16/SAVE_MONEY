@@ -52,6 +52,30 @@ export default function LoginPage() {
     }
 
     toast.success("Login successful!")
+    
+    // Check phone verification status after successful login
+    try {
+      const token = localStorage.getItem("bearer_token")
+      if (token) {
+        const verifyRes = await fetch("/api/verification/status", {
+          headers: { "Authorization": `Bearer ${token}` }
+        })
+        
+        if (verifyRes.ok) {
+          const verifyData = await verifyRes.json()
+          
+          // Redirect to phone verification if needed
+          if (verifyData.needsVerification) {
+            router.push("/verify-phone")
+            return
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Failed to check verification status:", error)
+    }
+    
+    // Default redirect to dashboard
     router.push("/dashboard")
   }
 

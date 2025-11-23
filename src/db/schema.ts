@@ -226,3 +226,29 @@ export const walletTransactions = sqliteTable('wallet_transactions', {
   description: text('description'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 });
+
+// Phone verification table
+export const phoneVerification = sqliteTable('phone_verification', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: text('user_id')
+    .notNull()
+    .unique()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  phoneNumber: text('phone_number').notNull(),
+  isVerified: integer('is_verified', { mode: 'boolean' }).notNull().default(false),
+  lastVerifiedAt: integer('last_verified_at', { mode: 'timestamp' }),
+  verificationCount: integer('verification_count').notNull().default(0),
+  nextVerificationRequired: integer('next_verification_required', { mode: 'timestamp' }),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+});
+
+// OTP codes table
+export const otpCodes = sqliteTable('otp_codes', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  phoneNumber: text('phone_number').notNull(),
+  otpCode: text('otp_code').notNull(),
+  expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+  isUsed: integer('is_used', { mode: 'boolean' }).notNull().default(false),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+});

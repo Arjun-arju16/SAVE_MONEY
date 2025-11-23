@@ -3,14 +3,27 @@
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Wallet, TrendingUp, Gift, Target, Shield, Zap, ArrowRight, Sparkles, LogIn } from "lucide-react"
+import { Wallet, TrendingUp, Gift, Target, Shield, Zap, ArrowRight, Sparkles, LogIn, LogOut } from "lucide-react"
 import Link from "next/link"
-import { useSession } from "@/lib/auth-client"
+import { useSession, authClient } from "@/lib/auth-client"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 export default function Home() {
-  const { data: session, isPending } = useSession()
+  const { data: session, isPending, refetch } = useSession()
   const router = useRouter()
+
+  const handleSignOut = async () => {
+    const { error } = await authClient.signOut()
+    if (error?.code) {
+      toast.error(error.code)
+    } else {
+      localStorage.removeItem("bearer_token")
+      refetch()
+      toast.success("Logged out successfully")
+      router.push("/")
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-purple-950 dark:to-gray-900">
@@ -47,6 +60,10 @@ export default function Home() {
                     Go to Dashboard
                   </Button>
                 </Link>
+                <Button variant="ghost" size="sm" onClick={handleSignOut}>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Logout
+                </Button>
               </>
             ) : null}
           </motion.div>
