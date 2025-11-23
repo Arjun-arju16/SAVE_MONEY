@@ -233,7 +233,7 @@ export default function Home() {
                     </Button>
                   </Link>
                 ) : (
-                  <Link href="/login">
+                  <Link href="/verify-phone">
                     <Button size="lg" className="bg-white text-violet-600 hover:bg-gray-100 text-lg px-8 py-6 rounded-xl shadow-xl">
                       <LogIn className="mr-2 w-5 h-5" />
                       Get Started Now

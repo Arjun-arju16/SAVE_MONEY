@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { 
   ArrowLeft, User, Wallet, Target, Gift, Lock, 
   TrendingUp, Calendar, ArrowUpRight, ArrowDownRight,
-  Award, Clock, Shield, History, ChevronRight
+  Award, Clock, Shield, History, ChevronRight, Smartphone
 } from "lucide-react"
 import Link from "next/link"
 import { useSession, authClient } from "@/lib/auth-client"
@@ -22,12 +22,20 @@ interface Activity {
   [key: string]: any
 }
 
+interface PhoneVerification {
+  phoneNumber: string
+  isVerified: boolean
+  lastVerifiedAt: Date | null
+  verificationCount: number
+}
+
 export default function Profile() {
   const { data: session, isPending, refetch } = useSession()
   const router = useRouter()
   const [activities, setActivities] = useState<Activity[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [walletBalance, setWalletBalance] = useState(0)
+  const [phoneVerification, setPhoneVerification] = useState<PhoneVerification | null>(null)
   const [stats, setStats] = useState({
     totalLocked: 0,
     activeGoals: 0,
@@ -56,6 +64,22 @@ export default function Profile() {
         if (walletRes.ok) {
           const walletData = await walletRes.json()
           setWalletBalance(walletData.balance)
+        }
+
+        // Fetch phone verification status
+        const phoneRes = await fetch("/api/verification/status", {
+          headers: { "Authorization": `Bearer ${token}` }
+        })
+        if (phoneRes.ok) {
+          const phoneData = await phoneRes.json()
+          if (phoneData.phoneNumber) {
+            setPhoneVerification({
+              phoneNumber: phoneData.phoneNumber,
+              isVerified: !phoneData.needsVerification,
+              lastVerifiedAt: phoneData.lastVerifiedAt ? new Date(phoneData.lastVerifiedAt) : null,
+              verificationCount: phoneData.verificationCount || 0
+            })
+          }
         }
 
         // Fetch all activities
@@ -108,50 +132,12 @@ export default function Profile() {
     }
   }
 
-  const getActivityIcon = (activity: Activity) => {
-    switch (activity.type) {
-      case 'savings': return Lock
-      case 'goal': return Target
-      case 'transaction': return Wallet
-      case 'reward': return Gift
-      case 'contribution': return TrendingUp
-      default: return History
-    }
+  const maskPhoneNumber = (phone: string) => {
+    if (phone.length <= 4) return phone
+    return "*".repeat(phone.length - 4) + phone.slice(-4)
   }
 
-  const getActivityColor = (activity: Activity) => {
-    switch (activity.type) {
-      case 'savings': return 'from-orange-500 to-amber-500'
-      case 'goal': return 'from-violet-500 to-purple-500'
-      case 'transaction': return activity.amount > 0 ? 'from-green-500 to-emerald-500' : 'from-red-500 to-rose-500'
-      case 'reward': return 'from-pink-500 to-rose-500'
-      case 'contribution': return 'from-blue-500 to-cyan-500'
-      default: return 'from-gray-500 to-gray-600'
-    }
-  }
-
-  const getActivityText = (activity: Activity) => {
-    switch (activity.type) {
-      case 'savings':
-        return `Locked ₹${activity.amount.toLocaleString()} for ${activity.lockDays} days`
-      case 'goal':
-        return `Goal: ${activity.productName} - ₹${activity.currentAmount.toLocaleString()} / ₹${activity.targetAmount.toLocaleString()}`
-      case 'transaction':
-        const types: { [key: string]: string } = {
-          'deposit': 'Deposited to wallet',
-          'withdrawal': 'Withdrawn from wallet',
-          'goal_allocation': 'Added to goal',
-          'goal_refund': 'Refunded from goal'
-        }
-        return `${types[activity.transactionType] || activity.transactionType}: ₹${Math.abs(activity.amount).toLocaleString()}`
-      case 'reward':
-        return `Earned: ${activity.rewardName}`
-      case 'contribution':
-        return `Contributed ₹${activity.amount.toLocaleString()} to ${activity.goal.productName}`
-      default:
-        return 'Activity'
-    }
-  }
+  // Keep existing getActivityIcon, getActivityColor, getActivityText functions
 
   if (isPending || !session?.user) {
     return (
@@ -205,7 +191,18 @@ export default function Profile() {
                 </div>
                 <div className="flex-1 text-center md:text-left">
                   <h1 className="text-4xl font-bold mb-2">{session.user.name}</h1>
-                  <p className="text-white/80 text-lg">{session.user.email}</p>
+                  <p className="text-white/80 text-lg mb-2">{session.user.email}</p>
+                  {phoneVerification && (
+                    <div className="flex items-center gap-2 justify-center md:justify-start">
+                      <Smartphone className="w-4 h-4" />
+                      <span className="text-white/80">{maskPhoneNumber(phoneVerification.phoneNumber)}</span>
+                      {phoneVerification.isVerified && (
+                        <Badge className="bg-green-500/20 text-green-100 border-green-300/30">
+                          Verified
+                        </Badge>
+                      )}
+                    </div>
+                  )}
                   <div className="mt-4 flex flex-wrap gap-3 justify-center md:justify-start">
                     <Badge className="bg-white/20 text-white border-white/30">
                       <Calendar className="w-3 h-3 mr-1" />
@@ -370,4 +367,49 @@ export default function Profile() {
       </div>
     </div>
   )
+}
+
+const getActivityIcon = (activity: Activity) => {
+  switch (activity.type) {
+    case 'savings': return Lock
+    case 'goal': return Target
+    case 'transaction': return Wallet
+    case 'reward': return Gift
+    case 'contribution': return TrendingUp
+    default: return History
+  }
+}
+
+const getActivityColor = (activity: Activity) => {
+  switch (activity.type) {
+    case 'savings': return 'from-orange-500 to-amber-500'
+    case 'goal': return 'from-violet-500 to-purple-500'
+    case 'transaction': return activity.amount > 0 ? 'from-green-500 to-emerald-500' : 'from-red-500 to-rose-500'
+    case 'reward': return 'from-pink-500 to-rose-500'
+    case 'contribution': return 'from-blue-500 to-cyan-500'
+    default: return 'from-gray-500 to-gray-600'
+  }
+}
+
+const getActivityText = (activity: Activity) => {
+  switch (activity.type) {
+    case 'savings':
+      return `Locked ₹${activity.amount.toLocaleString()} for ${activity.lockDays} days`
+    case 'goal':
+      return `Goal: ${activity.productName} - ₹${activity.currentAmount.toLocaleString()} / ₹${activity.targetAmount.toLocaleString()}`
+    case 'transaction':
+      const types: { [key: string]: string } = {
+        'deposit': 'Deposited to wallet',
+        'withdrawal': 'Withdrawn from wallet',
+        'goal_allocation': 'Added to goal',
+        'goal_refund': 'Refunded from goal'
+      }
+      return `${types[activity.transactionType] || activity.transactionType}: ₹${Math.abs(activity.amount).toLocaleString()}`
+    case 'reward':
+      return `Earned: ${activity.rewardName}`
+    case 'contribution':
+      return `Contributed ₹${activity.amount.toLocaleString()} to ${activity.goal.productName}`
+    default:
+      return 'Activity'
+  }
 }

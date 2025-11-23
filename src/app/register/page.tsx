@@ -65,6 +65,42 @@ export default function RegisterPage() {
     }
 
     toast.success("Account created successfully!")
+    
+    // Check if there's a verified phone in localStorage from the verification flow
+    const verifiedPhone = localStorage.getItem("verified_phone")
+    if (verifiedPhone) {
+      // Auto-login and link the verified phone
+      const loginResult = await authClient.signIn.email({
+        email,
+        password
+      })
+      
+      if (!loginResult.error) {
+        try {
+          const token = localStorage.getItem("bearer_token")
+          if (token) {
+            // Link the verified phone to this user account
+            await fetch("/api/verification/link-phone", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+              },
+              body: JSON.stringify({ phoneNumber: verifiedPhone })
+            })
+            // Clear the temporary storage
+            localStorage.removeItem("verified_phone")
+            toast.success("Phone number linked to your account!")
+            // Redirect to dashboard
+            router.push("/dashboard")
+            return
+          }
+        } catch (error) {
+          console.error("Failed to link phone:", error)
+        }
+      }
+    }
+    
     router.push("/login?registered=true")
   }
 

@@ -21,11 +21,26 @@ export default function VerifyPhonePage() {
   const [countdown, setCountdown] = useState(0)
   const [generatedOtp, setGeneratedOtp] = useState("")
 
-  // Redirect if not authenticated
+  // Check if user is already logged in and has verified phone
   useEffect(() => {
-    if (!isPending && !session?.user) {
-      router.push("/login?redirect=/verify-phone")
+    const checkVerificationStatus = async () => {
+      if (!isPending && session?.user) {
+        const token = localStorage.getItem("bearer_token")
+        if (token) {
+          const res = await fetch("/api/verification/status", {
+            headers: { "Authorization": `Bearer ${token}` }
+          })
+          if (res.ok) {
+            const data = await res.json()
+            // If already verified, redirect to dashboard
+            if (!data.needsVerification) {
+              router.push("/dashboard")
+            }
+          }
+        }
+      }
     }
+    checkVerificationStatus()
   }, [session, isPending, router])
 
   // Countdown timer for resend OTP
@@ -53,10 +68,10 @@ export default function VerifyPhonePage() {
       const data = await res.json()
 
       if (res.ok) {
-        setGeneratedOtp(data.otp) // Store for display (dev only)
+        setGeneratedOtp(data.otp)
         setStep("otp")
-        setCountdown(60) // 60 second cooldown
-        toast.success("OTP sent successfully! Check your phone.")
+        setCountdown(60)
+        toast.success("OTP sent successfully!")
         toast.info(`Development Mode: Your OTP is ${data.otp}`, { duration: 10000 })
       } else {
         toast.error(data.error || "Failed to send OTP")
@@ -77,7 +92,6 @@ export default function VerifyPhonePage() {
 
     setIsLoading(true)
     try {
-      // Step 1: Verify OTP
       const verifyRes = await fetch("/api/verification/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -92,29 +106,35 @@ export default function VerifyPhonePage() {
         return
       }
 
-      // Step 2: Link phone to user account
-      const token = localStorage.getItem("bearer_token")
-      const linkRes = await fetch("/api/verification/link-phone", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({ phoneNumber })
-      })
-
-      const linkData = await linkRes.json()
-
-      if (linkRes.ok) {
-        setStep("success")
-        toast.success("Phone verified successfully!")
-        
+      // Store verified phone in localStorage temporarily
+      localStorage.setItem("verified_phone", phoneNumber)
+      
+      setStep("success")
+      toast.success("Phone verified successfully!")
+      
+      // Check if user is logged in
+      if (session?.user) {
+        // Link phone to account immediately
+        const token = localStorage.getItem("bearer_token")
+        if (token) {
+          await fetch("/api/verification/link-phone", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({ phoneNumber })
+          })
+        }
         // Redirect to dashboard after 2 seconds
         setTimeout(() => {
           router.push("/dashboard")
         }, 2000)
       } else {
-        toast.error(linkData.error || "Failed to link phone number")
+        // Redirect to login after 2 seconds
+        setTimeout(() => {
+          router.push("/login")
+        }, 2000)
       }
     } catch (error) {
       console.error("Verify OTP error:", error)
@@ -164,7 +184,7 @@ export default function VerifyPhonePage() {
             Verify Your Phone
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Secure your account with mobile verification
+            {session?.user ? "Secure your account with mobile verification" : "Verify your mobile to get started"}
           </p>
         </div>
 
@@ -326,10 +346,13 @@ export default function VerifyPhonePage() {
                 </motion.div>
                 <h2 className="text-2xl font-bold mb-2">Verification Successful!</h2>
                 <p className="text-gray-600 dark:text-gray-400 mb-6">
-                  Your phone number has been verified successfully
+                  {session?.user 
+                    ? "Your phone number has been verified successfully"
+                    : "Now let's create your account"
+                  }
                 </p>
                 <p className="text-sm text-gray-500 dark:text-gray-500">
-                  Redirecting to dashboard...
+                  {session?.user ? "Redirecting to dashboard..." : "Redirecting to login..."}
                 </p>
               </Card>
             </motion.div>

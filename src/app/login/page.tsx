@@ -53,29 +53,31 @@ export default function LoginPage() {
 
     toast.success("Login successful!")
     
-    // Check phone verification status after successful login
-    try {
-      const token = localStorage.getItem("bearer_token")
-      if (token) {
-        const verifyRes = await fetch("/api/verification/status", {
-          headers: { "Authorization": `Bearer ${token}` }
-        })
-        
-        if (verifyRes.ok) {
-          const verifyData = await verifyRes.json()
-          
-          // Redirect to phone verification if needed
-          if (verifyData.needsVerification) {
-            router.push("/verify-phone")
-            return
-          }
+    // Check if there's a verified phone in localStorage from the verification flow
+    const verifiedPhone = localStorage.getItem("verified_phone")
+    if (verifiedPhone) {
+      try {
+        const token = localStorage.getItem("bearer_token")
+        if (token) {
+          // Link the verified phone to this user account
+          await fetch("/api/verification/link-phone", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({ phoneNumber: verifiedPhone })
+          })
+          // Clear the temporary storage
+          localStorage.removeItem("verified_phone")
+          toast.success("Phone number linked to your account!")
         }
+      } catch (error) {
+        console.error("Failed to link phone:", error)
       }
-    } catch (error) {
-      console.error("Failed to check verification status:", error)
     }
     
-    // Default redirect to dashboard
+    // Redirect to dashboard
     router.push("/dashboard")
   }
 
