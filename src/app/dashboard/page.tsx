@@ -352,7 +352,7 @@ export default function Dashboard() {
               <div className="relative z-10">
                 <div className="flex items-center gap-2 mb-4 text-white/80">
                   <Wallet className="w-5 h-5" />
-                  <span className="text-sm font-medium">Wallet Balance</span>
+                  <span className="text-sm font-medium">Goal Money</span>
                 </div>
                 <motion.div
                   key={walletBalance}
@@ -363,18 +363,11 @@ export default function Dashboard() {
                   ₹{walletBalance.toLocaleString()}
                 </motion.div>
                 <p className="text-white/80 text-sm mb-4">
-                  Available for goals
+                  Money added for your savings goals
                 </p>
                 <div className="flex gap-2">
-                  <Button 
-                    onClick={() => setShowAddToWallet(true)}
-                    className="bg-white text-emerald-600 hover:bg-gray-100"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Money
-                  </Button>
                   <Link href="/my-goals">
-                    <Button className="bg-white/20 text-white hover:bg-white/30 border border-white/30">
+                    <Button className="bg-white text-emerald-600 hover:bg-gray-100">
                       <Target className="w-4 h-4 mr-2" />
                       My Goals
                     </Button>
