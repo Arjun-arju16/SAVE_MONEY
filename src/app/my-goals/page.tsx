@@ -297,345 +297,37 @@ export default function MyGoals() {
         >
           <Card className="p-8 bg-gradient-to-br from-green-500 via-emerald-500 to-teal-500 border-0 text-white relative overflow-hidden">
             <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzBoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyeiIvPjwvZz48L2c+PC9zdmc+')] opacity-20"></div>
-            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
-              <div>
-                <div className="flex items-center gap-2 mb-2 text-white/80">
-                  <Wallet className="w-5 h-5" />
-                  <span className="text-sm font-medium">Available Wallet Balance</span>
-                </div>
-                <motion.div
-                  key={walletBalance}
-                  initial={{ scale: 1.1, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  className="text-5xl md:text-6xl font-bold mb-2"
-                >
-                  ₹{walletBalance.toLocaleString()}
-                </motion.div>
-                <p className="text-white/80 text-sm">
-                  Add money to your goals from this balance
-                </p>
+            <div className="relative z-10">
+              <div className="flex items-center gap-2 mb-2 text-white/80">
+                <Wallet className="w-5 h-5" />
+                <span className="text-sm font-medium">Available Wallet Balance</span>
               </div>
-              <Link href="/dashboard">
-                <Button className="bg-white text-emerald-600 hover:bg-gray-100">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add to Wallet
-                </Button>
-              </Link>
+              <motion.div
+                key={walletBalance}
+                initial={{ scale: 1.1, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="text-5xl md:text-6xl font-bold mb-2"
+              >
+                ₹{walletBalance.toLocaleString()}
+              </motion.div>
+              <p className="text-white/80 text-sm">
+                Use this balance to add money to your goals below
+              </p>
+              
+              {/* Goals Summary */}
+              <div className="mt-6 pt-6 border-t border-white/20">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-white/70 text-sm mb-1">Active Goals</p>
+                    <p className="text-2xl font-bold">{activeGoals.length}</p>
+                  </div>
+                  <div>
+                    <p className="text-white/70 text-sm mb-1">Completed</p>
+                    <p className="text-2xl font-bold">{completedGoals.length}</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </Card>
         </motion.div>
-
-        {/* Active Goals Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="mb-12"
-        >
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold flex items-center gap-2">
-              <TrendingUp className="w-6 h-6 text-violet-600" />
-              Active Goals ({activeGoals.length})
-            </h2>
-          </div>
-
-          {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {[1, 2].map(i => (
-                <Card key={i} className="p-6 bg-white dark:bg-gray-800 animate-pulse">
-                  <div className="h-48 bg-gray-200 dark:bg-gray-700 rounded-lg mb-4"></div>
-                  <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
-                </Card>
-              ))}
-            </div>
-          ) : activeGoals.length === 0 ? (
-            <Card className="p-12 bg-white dark:bg-gray-800 text-center">
-              <div className="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mx-auto mb-4">
-                <Target className="w-10 h-10 text-gray-400" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">No Active Goals</h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-6">
-                Start saving for your dream products by setting goals
-              </p>
-              <Link href="/goals">
-                <Button className="bg-gradient-to-r from-violet-600 to-purple-600">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Browse Products
-                </Button>
-              </Link>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {activeGoals.map((goal, i) => {
-                const remaining = goal.targetAmount - goal.currentAmount
-                const daysToGoal = calculateDaysToGoal(remaining)
-
-                return (
-                  <motion.div
-                    key={goal.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 + i * 0.1 }}
-                    whileHover={{ y: -5 }}
-                  >
-                    <Card className="p-6 bg-white dark:bg-gray-800 hover:shadow-2xl transition-all overflow-hidden group">
-                      {/* Product Image */}
-                      <div className="relative aspect-video mb-4 rounded-xl overflow-hidden bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900/20 dark:to-purple-900/20">
-                        {goal.product.imageUrl && (
-                          <img
-                            src={goal.product.imageUrl}
-                            alt={goal.product.name}
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                          />
-                        )}
-                        <Badge className="absolute top-3 right-3 bg-violet-600 text-white border-0">
-                          {goal.product.category}
-                        </Badge>
-                      </div>
-
-                      {/* Goal Details */}
-                      <h3 className="text-xl font-bold mb-2 line-clamp-1">{goal.product.name}</h3>
-                      
-                      <div className="flex items-baseline gap-2 mb-4">
-                        <span className="text-2xl font-bold text-violet-600">
-                          ₹{goal.currentAmount.toLocaleString()}
-                        </span>
-                        <span className="text-gray-600 dark:text-gray-400">
-                          / ₹{goal.targetAmount.toLocaleString()}
-                        </span>
-                      </div>
-
-                      {/* Animated Progress Bar */}
-                      <div className="mb-4">
-                        <div className="flex justify-between text-sm mb-2">
-                          <span className="text-gray-600 dark:text-gray-400">Progress</span>
-                          <span className="font-bold text-violet-600">{goal.progressPercentage}%</span>
-                        </div>
-                        <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${goal.progressPercentage}%` }}
-                            transition={{ duration: 1, delay: 0.5 + i * 0.1 }}
-                            className="h-full bg-gradient-to-r from-violet-600 via-purple-600 to-pink-600 relative"
-                          >
-                            <motion.div
-                              animate={{
-                                x: ['-100%', '100%'],
-                              }}
-                              transition={{
-                                duration: 1.5,
-                                repeat: Infinity,
-                                ease: "linear"
-                              }}
-                              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
-                            />
-                          </motion.div>
-                        </div>
-                      </div>
-
-                      {/* Remaining Amount */}
-                      <div className="bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-lg p-3 mb-4">
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-violet-700 dark:text-violet-300">Still needed:</span>
-                          <span className="font-bold text-violet-900 dark:text-violet-200">
-                            ₹{remaining.toLocaleString()}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 mt-2 text-xs text-violet-600 dark:text-violet-400">
-                          <Clock className="w-3 h-3" />
-                          <span>~{daysToGoal} days at ₹50/day</span>
-                        </div>
-                      </div>
-
-                      {/* Action Button */}
-                      <Button
-                        onClick={() => setSelectedGoal(goal)}
-                        className="w-full bg-gradient-to-r from-violet-600 to-purple-600 group-hover:from-violet-700 group-hover:to-purple-700"
-                        disabled={walletBalance === 0}
-                      >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Money to Goal
-                      </Button>
-                    </Card>
-                  </motion.div>
-                )
-              })}
-            </div>
-          )}
-        </motion.div>
-
-        {/* Completed Goals Section */}
-        {completedGoals.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold flex items-center gap-2">
-                <CheckCircle2 className="w-6 h-6 text-green-600" />
-                Completed Goals ({completedGoals.length})
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {completedGoals.map((goal, i) => (
-                <motion.div
-                  key={goal.id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.4 + i * 0.1 }}
-                >
-                  <Card className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-200 dark:border-green-800">
-                    <div className="relative aspect-square mb-3 rounded-lg overflow-hidden">
-                      {goal.product.imageUrl && (
-                        <img
-                          src={goal.product.imageUrl}
-                          alt={goal.product.name}
-                          className="w-full h-full object-cover"
-                        />
-                      )}
-                      <div className="absolute top-2 right-2 w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
-                        <CheckCircle2 className="w-5 h-5 text-white" />
-                      </div>
-                    </div>
-                    <h4 className="font-bold mb-1 line-clamp-1">{goal.product.name}</h4>
-                    <p className="text-sm text-green-600 dark:text-green-400 font-medium">
-                      ₹{goal.targetAmount.toLocaleString()} achieved!
-                    </p>
-                  </Card>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </div>
-
-      {/* Contribute to Goal Modal */}
-      <AnimatePresence>
-        {selectedGoal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setSelectedGoal(null)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md"
-            >
-              <Card className="p-6 bg-white dark:bg-gray-800">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold">Add Money to Goal</h3>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setSelectedGoal(null)}
-                  >
-                    <X className="w-5 h-5" />
-                  </Button>
-                </div>
-
-                {/* Goal Info */}
-                <div className="mb-6 p-4 bg-violet-50 dark:bg-violet-900/20 rounded-lg">
-                  <div className="flex items-center gap-3 mb-3">
-                    {selectedGoal.product.imageUrl && (
-                      <img
-                        src={selectedGoal.product.imageUrl}
-                        alt={selectedGoal.product.name}
-                        className="w-16 h-16 rounded-lg object-cover"
-                      />
-                    )}
-                    <div className="flex-1">
-                      <h4 className="font-bold line-clamp-1">{selectedGoal.product.name}</h4>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        ₹{selectedGoal.currentAmount.toLocaleString()} / ₹{selectedGoal.targetAmount.toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                  <Progress value={selectedGoal.progressPercentage} className="h-2" />
-                </div>
-
-                {/* Wallet Balance */}
-                <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">Available Balance</span>
-                    <span className="text-xl font-bold text-green-600">₹{walletBalance.toLocaleString()}</span>
-                  </div>
-                </div>
-
-                <form onSubmit={handleContribute} className="space-y-5">
-                  <div>
-                    <Label htmlFor="contribute-amount">Amount to Add</Label>
-                    <Input
-                      id="contribute-amount"
-                      type="number"
-                      placeholder="Enter amount"
-                      value={contributeAmount}
-                      onChange={(e) => setContributeAmount(e.target.value)}
-                      min="1"
-                      max={Math.min(walletBalance, selectedGoal.targetAmount - selectedGoal.currentAmount)}
-                      required
-                      className="mt-2 h-12"
-                    />
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                      Max: ₹{Math.min(walletBalance, selectedGoal.targetAmount - selectedGoal.currentAmount).toLocaleString()}
-                    </p>
-                  </div>
-
-                  {/* Quick Amount Buttons */}
-                  <div className="grid grid-cols-4 gap-2">
-                    {[50, 100, 500, 1000].map(amount => (
-                      <Button
-                        key={amount}
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setContributeAmount(amount.toString())}
-                        disabled={amount > walletBalance || amount > (selectedGoal.targetAmount - selectedGoal.currentAmount)}
-                      >
-                        ₹{amount}
-                      </Button>
-                    ))}
-                  </div>
-
-                  <div className="bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-lg p-4">
-                    <div className="flex items-start gap-2">
-                      <AlertCircle className="w-5 h-5 text-violet-600 mt-0.5 flex-shrink-0" />
-                      <div className="text-sm text-violet-700 dark:text-violet-300">
-                        This amount will be deducted from your wallet and added to your goal.
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3">
-                    <Button 
-                      type="button"
-                      variant="outline" 
-                      onClick={() => setSelectedGoal(null)}
-                      className="flex-1"
-                    >
-                      Cancel
-                    </Button>
-                    <Button 
-                      type="submit"
-                      disabled={isContributing || !contributeAmount || parseInt(contributeAmount) <= 0}
-                      className="flex-1 bg-gradient-to-r from-violet-600 to-purple-600"
-                    >
-                      {isContributing ? "Adding..." : "Add Money"}
-                    </Button>
-                  </div>
-                </form>
-              </Card>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  )
-}
+</userжәк
