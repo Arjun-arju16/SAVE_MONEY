@@ -32,7 +32,9 @@ export default function Dashboard() {
   const [lockDays, setLockDays] = useState("30")
   const [showAddMoney, setShowAddMoney] = useState(false)
   const [showAddToWallet, setShowAddToWallet] = useState(false)
+  const [showAddAvailable, setShowAddAvailable] = useState(false)
   const [walletAmount, setWalletAmount] = useState("")
+  const [availableAmount, setAvailableAmount] = useState("")
   const [activeSavings, setActiveSavings] = useState<LockedSaving[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isFetchingData, setIsFetchingData] = useState(true)
@@ -126,6 +128,50 @@ export default function Dashboard() {
         fetchActiveSavings()
       } else {
         toast.error(data.error || "Failed to lock money")
+      }
+    } catch (error) {
+      toast.error("Something went wrong. Please try again.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleAddAvailable = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!availableAmount || parseFloat(availableAmount) < 1 || parseFloat(availableAmount) > 100000) {
+      toast.error("Please enter amount between ₹1 and ₹100,000")
+      return
+    }
+
+    const token = localStorage.getItem("bearer_token")
+    if (!token) {
+      toast.error("Please login again")
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      const response = await fetch("/api/wallet/deposit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          amount: parseFloat(availableAmount)
+        })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast.success(`₹${availableAmount} added successfully!`)
+        setAvailableAmount("")
+        setShowAddAvailable(false)
+        fetchActiveSavings()
+      } else {
+        toast.error(data.error || "Failed to add money")
       }
     } catch (error) {
       toast.error("Something went wrong. Please try again.")
@@ -340,15 +386,15 @@ export default function Dashboard() {
       </nav>
 
       <div className="max-w-5xl mx-auto px-6 py-12">
-        {/* Wallet and Locked Savings Cards */}
+        {/* Wallet and Available Amount Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {/* Wallet Balance Card */}
+          {/* Goal Money Card */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
           >
             <Card className="p-8 bg-gradient-to-br from-green-500 via-emerald-500 to-teal-500 border-0 text-white relative overflow-hidden">
-              <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzBoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyeiIvPjwvZz48L2c+PC9zdmc+')] opacity-20"></div>
+              <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzBoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyeiIvPjwvZz48L2c+PC9zdmc+')] opacity-20"></div>
               <div className="relative z-10">
                 <div className="flex items-center gap-2 mb-4 text-white/80">
                   <Wallet className="w-5 h-5" />
@@ -377,40 +423,39 @@ export default function Dashboard() {
             </Card>
           </motion.div>
 
-          {/* Total Locked Card */}
+          {/* Total Available Amount Card */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
           >
             <Card className="p-8 bg-gradient-to-br from-violet-600 via-purple-600 to-pink-600 border-0 text-white relative overflow-hidden">
-              <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzBoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyeiIvPjwvZz48L2c+PC9zdmc+')] opacity-20"></div>
+              <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzBoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyeiIvPjwvZz48L2c+PC9zdmc+')] opacity-20"></div>
               <div className="relative z-10">
                 <div className="flex items-center gap-2 mb-4 text-white/80">
                   <Shield className="w-5 h-5" />
-                  <span className="text-sm font-medium">Total Locked Savings</span>
+                  <span className="text-sm font-medium">Total Available Amount</span>
                 </div>
                 <motion.div
-                  key={totalLocked}
+                  key={walletBalance}
                   initial={{ scale: 1.1, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   className="text-4xl md:text-5xl font-bold mb-2"
                 >
-                  ₹{totalLocked.toLocaleString()}
+                  ₹{walletBalance.toLocaleString()}
                 </motion.div>
                 <p className="text-white/80 text-sm mb-4">
-                  {activeSavings.length} active {activeSavings.length === 1 ? 'lock' : 'locks'}
+                  Available to lock for savings
                 </p>
-
-                {!hasActiveLocks && (
+                <div className="flex gap-2">
                   <Button 
-                    onClick={() => setShowAddMoney(true)}
+                    onClick={() => setShowAddAvailable(true)}
                     className="bg-white text-violet-600 hover:bg-gray-100"
                   >
                     <Plus className="w-4 h-4 mr-2" />
-                    Lock New Savings
+                    Add Money
                   </Button>
-                )}
+                </div>
               </div>
             </Card>
           </motion.div>
@@ -476,47 +521,50 @@ export default function Dashboard() {
         </motion.div>
 
         {/* Info Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
+            className="flex items-start gap-4"
           >
-            <Card className="p-6 bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm border-gray-200/50 dark:border-gray-700/50">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center mb-4">
-                <Wallet className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="text-lg font-bold mb-2">Secure Storage</h3>
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg flex-shrink-0">
+              <Wallet className="w-7 h-7 text-white" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold mb-1">Secure Storage</h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">Your money is safely locked with time protection</p>
-            </Card>
+            </div>
           </motion.div>
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
+            className="flex items-start gap-4"
           >
-            <Card className="p-6 bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm border-gray-200/50 dark:border-gray-700/50">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center mb-4">
-                <TrendingUp className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="text-lg font-bold mb-2">Build Discipline</h3>
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center shadow-lg flex-shrink-0">
+              <TrendingUp className="w-7 h-7 text-white" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold mb-1">Build Discipline</h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">Commit to not spending and watch your savings grow</p>
-            </Card>
+            </div>
           </motion.div>
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
+            className="flex items-start gap-4"
           >
-            <Card className="p-6 bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm border-gray-200/50 dark:border-gray-700/50">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center mb-4">
-                <Lock className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="text-lg font-bold mb-2">Time Protection</h3>
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center shadow-lg flex-shrink-0">
+              <Lock className="w-7 h-7 text-white" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold mb-1">Time Protection</h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">10% penalty for early withdrawal encourages patience</p>
-            </Card>
+            </div>
           </motion.div>
         </div>
 
@@ -713,6 +761,81 @@ export default function Dashboard() {
                       className="flex-1 bg-gradient-to-r from-violet-600 to-purple-600"
                     >
                       {isLoading ? "Locking..." : "Lock Money"}
+                    </Button>
+                  </div>
+                </form>
+              </Card>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Add Available Money Modal */}
+      <AnimatePresence>
+        {showAddAvailable && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowAddAvailable(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md"
+            >
+              <Card className="p-6 bg-white dark:bg-gray-800">
+                <h3 className="text-2xl font-bold mb-2">Add Money</h3>
+                <p className="text-gray-600 dark:text-gray-400 mb-6 text-sm">
+                  Add funds to your available amount for locking
+                </p>
+                
+                <form onSubmit={handleAddAvailable} className="space-y-5">
+                  <div>
+                    <Label htmlFor="available-amount">Amount (₹1 - ₹100,000)</Label>
+                    <Input
+                      id="available-amount"
+                      type="number"
+                      placeholder="Enter amount to add"
+                      value={availableAmount}
+                      onChange={(e) => setAvailableAmount(e.target.value)}
+                      min="1"
+                      max="100000"
+                      required
+                      className="mt-2 h-12 text-lg"
+                    />
+                  </div>
+
+                  <div className="bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-lg p-4">
+                    <div className="flex items-start gap-2">
+                      <Shield className="w-5 h-5 text-violet-600 mt-0.5 flex-shrink-0" />
+                      <div className="text-sm">
+                        <div className="font-medium text-violet-900 dark:text-violet-300 mb-1">Available for Locking</div>
+                        <div className="text-violet-700 dark:text-violet-400">
+                          This money will be available to lock for your savings with time protection.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <Button 
+                      type="button"
+                      variant="outline" 
+                      onClick={() => setShowAddAvailable(false)}
+                      className="flex-1"
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      type="submit"
+                      disabled={isLoading || !availableAmount || parseFloat(availableAmount) < 1 || parseFloat(availableAmount) > 100000}
+                      className="flex-1 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
+                    >
+                      {isLoading ? "Adding..." : "Add Money"}
                     </Button>
                   </div>
                 </form>
