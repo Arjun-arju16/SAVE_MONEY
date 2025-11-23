@@ -25,6 +25,13 @@ interface LockedSaving {
   daysRemaining: number
 }
 
+interface UserGoal {
+  id: number
+  currentAmount: number
+  targetAmount: number
+  status: string
+}
+
 export default function Dashboard() {
   const { data: session, isPending, refetch } = useSession()
   const router = useRouter()
@@ -40,6 +47,7 @@ export default function Dashboard() {
   const [isFetchingData, setIsFetchingData] = useState(true)
   const [showCelebration, setShowCelebration] = useState(false)
   const [walletBalance, setWalletBalance] = useState(0)
+  const [totalGoalMoney, setTotalGoalMoney] = useState(0)
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -48,7 +56,7 @@ export default function Dashboard() {
     }
   }, [session, isPending, router])
 
-  // Fetch active savings and wallet balance
+  // Fetch active savings, wallet balance, and goal money
   const fetchActiveSavings = async () => {
     const token = localStorage.getItem("bearer_token")
     if (!token) return
@@ -75,6 +83,16 @@ export default function Dashboard() {
       if (walletRes.ok) {
         const walletData = await walletRes.json()
         setWalletBalance(walletData.balance)
+      }
+
+      // Fetch user goals to calculate total goal money
+      const goalsRes = await fetch("/api/goals/user", {
+        headers: { "Authorization": `Bearer ${token}` }
+      })
+      if (goalsRes.ok) {
+        const goalsData: UserGoal[] = await goalsRes.json()
+        const totalAdded = goalsData.reduce((sum, goal) => sum + goal.currentAmount, 0)
+        setTotalGoalMoney(totalAdded)
       }
     } catch (error) {
       console.error("Failed to fetch savings:", error)
@@ -394,19 +412,19 @@ export default function Dashboard() {
             animate={{ opacity: 1, y: 0 }}
           >
             <Card className="p-8 bg-gradient-to-br from-green-500 via-emerald-500 to-teal-500 border-0 text-white relative overflow-hidden">
-              <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzBoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyeiIvPjwvZz48L2c+PC9zdmc+')] opacity-20"></div>
+              <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzBoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyeiIvPjwvZz48L2c+PC9zdmc+')] opacity-20"></div>
               <div className="relative z-10">
                 <div className="flex items-center gap-2 mb-4 text-white/80">
                   <Wallet className="w-5 h-5" />
                   <span className="text-sm font-medium">Goal Money</span>
                 </div>
                 <motion.div
-                  key={walletBalance}
+                  key={totalGoalMoney}
                   initial={{ scale: 1.1, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   className="text-4xl md:text-5xl font-bold mb-2"
                 >
-                  ₹{walletBalance.toLocaleString()}
+                  ₹{totalGoalMoney.toLocaleString()}
                 </motion.div>
                 <p className="text-white/80 text-sm mb-4">
                   Money added for your savings goals
@@ -430,7 +448,7 @@ export default function Dashboard() {
             transition={{ delay: 0.1 }}
           >
             <Card className="p-8 bg-gradient-to-br from-violet-600 via-purple-600 to-pink-600 border-0 text-white relative overflow-hidden">
-              <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzBoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyeiIvPjwvZz48L2c+PC9zdmc+')] opacity-20"></div>
+              <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzBoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyem0wLTRoLTJ2LTJoMnYyeiIvPjwvZz48L2c+PC9zdmc+')] opacity-20"></div>
               <div className="relative z-10">
                 <div className="flex items-center gap-2 mb-4 text-white/80">
                   <Shield className="w-5 h-5" />
