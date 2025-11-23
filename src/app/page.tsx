@@ -254,7 +254,7 @@ export default function Home() {
             <Wallet className="w-6 h-6 text-violet-600" />
             <span className="text-xl font-bold text-gray-900 dark:text-white">SaveSmart</span>
           </div>
-          <p>© 2024 SaveSmart. Stop wasting, start saving.</p>
+          <p>© 2025 SaveSmart. Stop wasting, start saving.</p>
         </div>
       </footer>
     </div>
